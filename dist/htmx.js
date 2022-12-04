@@ -74,7 +74,7 @@ return (function () {
             writeLayout: writeLayout,
             resizeSelect: resizeSelect,
             globalParams: {},
-            version: "1.8.2"
+            version: "1.8.4"
         };
 
         /** @type {import("./htmx").HtmxInternalApi} */
@@ -373,13 +373,14 @@ return (function () {
             return elemTop < window.innerHeight && elemBottom >= 0;
         }
 
-	function bodyContains(elt) {
-	    if (elt.getRootNode() instanceof ShadowRoot) {
-		return getDocument().body.contains(elt.getRootNode().host);
-	    } else {
-		return getDocument().body.contains(elt);
-	    }
-	}
+        function bodyContains(elt) {
+            // IE Fix
+            if (elt.getRootNode && elt.getRootNode() instanceof ShadowRoot) {
+                return getDocument().body.contains(elt.getRootNode().host);
+            } else {
+                return getDocument().body.contains(elt);
+            }
+        }
 
         function splitOnWhitespace(trigger) {
             return trigger.trim().split(/\s+/);
@@ -419,6 +420,20 @@ return (function () {
             } catch(e) {
                 return false;
             }
+        }
+
+        function normalizePath(path) {
+            if (path.match(/^(http:\/\/|https:\/\/)/)) {
+                var url = new URL(path);
+                if (url) {
+                    path = url.pathname + url.search;
+                }
+            }
+            // remove trailing slash, unless index page
+            if (!path.match('^/$')) {
+                path = path.replace(/\/+$/, '');
+            }
+            return path;
         }
 
         //==========================================================================================
@@ -1387,7 +1402,7 @@ return (function () {
                 var verb, path;
                 if (elt.tagName === "A") {
                     verb = "get";
-                    path = getRawAttribute(elt, 'href');
+                    path = elt.href; // DOM property gives the fully resolved href of a relative link
                 } else {
                     var rawAttribute = getRawAttribute(elt, "method");
                     verb = rawAttribute ? rawAttribute.toLowerCase() : "get";
@@ -2661,7 +2676,7 @@ return (function () {
             return arr;
         }
 
-        function issueAjaxRequest(verb, path, elt, event, etc) {
+        function issueAjaxRequest(verb, path, elt, event, etc, confirmed) {
             var resolve = null;
             var reject = null;
             etc = etc != null ? etc : {};
@@ -2686,6 +2701,17 @@ return (function () {
             if (etc.targetOverride === null || ((target == null || target == DUMMY_ELT) && swapStyle != "none")) {
                 triggerErrorEvent(elt, 'htmx:targetError', {target: getAttributeValue(elt, "hx-target")});
                 return;
+            }
+
+            // allow event-based confirmation w/ a callback
+            if (!confirmed) {
+                var issueRequest = function() {
+                    return issueAjaxRequest(verb, path, elt, event, etc, true);
+                }
+                var confirmDetails = {target: target, elt: elt, path: path, verb: verb, triggeringEvent: event, etc: etc, issueRequest: issueRequest};
+                if (triggerEvent(elt, 'htmx:confirm', confirmDetails) === false) {
+                    return;
+                }
             }
 
             var syncElt = elt;
@@ -2816,7 +2842,9 @@ return (function () {
 
             var requestAttrValues = getValuesForElement(elt, 'hx-request');
 
+            var eltIsBoosted = getInternalData(elt).boosted;
             var requestConfig = {
+                boosted: eltIsBoosted,
                 parameters: filteredParameters,
                 unfilteredParameters: allParameters,
                 headers:headers,
@@ -2889,7 +2917,7 @@ return (function () {
             }
 
             var responseInfo = {
-                xhr: xhr, target: target, requestConfig: requestConfig, etc: etc,
+                xhr: xhr, target: target, requestConfig: requestConfig, etc: etc, boosted: eltIsBoosted,
                 pathInfo: {
                     requestPath: path,
                     finalRequestPath: finalPathForGet || path,
@@ -3081,7 +3109,7 @@ return (function () {
                     redirectPath = swapSpec['path'];
                     delete swapSpec['path'];
                 }
-                ajaxHelper('GET', redirectPath, swapSpec).then(() =>{
+                ajaxHelper('GET', redirectPath, swapSpec).then(function(){
                     pushUrlIntoHistory(redirectPath);
                 });
                 return;
@@ -3277,7 +3305,7 @@ return (function () {
                 }
             }
             if (isError) {
-                triggerErrorEvent(elt, 'htmx:responseError', mergeObjects({error: "Response Status Error Code " + xhr.status + " from " + responseInfo.pathInfo.path}, responseInfo));
+                triggerErrorEvent(elt, 'htmx:responseError', mergeObjects({error: "Response Status Error Code " + xhr.status + " from " + responseInfo.pathInfo.requestPath}, responseInfo));
             }
         }
 
