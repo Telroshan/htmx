@@ -54,10 +54,12 @@ return (function () {
                 withCredentials:false,
                 timeout:0,
                 wsReconnectDelay: 'full-jitter',
+                wsBinaryType: 'blob',
                 disableSelector: "[hx-disable], [data-hx-disable]",
                 useTemplateFragments: false,
                 scrollBehavior: 'smooth',
                 defaultFocusScroll: false,
+                getCacheBusterParam: false,
             },
             eventSources: [],
             parseInterval:parseInterval,
@@ -68,13 +70,15 @@ return (function () {
                 return eventSource
             },
             createWebSocket: function(url){
-                return new WebSocket(url, []);
+                var sock = new WebSocket(url, []);
+                sock.binaryType = htmx.config.wsBinaryType;
+                return sock;
             },
             readLayout: readLayout,
             writeLayout: writeLayout,
             resizeSelect: resizeSelect,
             globalParams: {},
-            version: "1.8.4"
+            version: "1.8.5"
         };
 
         /** @type {import("./htmx").HtmxInternalApi} */
@@ -422,20 +426,6 @@ return (function () {
             }
         }
 
-        function normalizePath(path) {
-            if (path.match(/^(http:\/\/|https:\/\/)/)) {
-                var url = new URL(path);
-                if (url) {
-                    path = url.pathname + url.search;
-                }
-            }
-            // remove trailing slash, unless index page
-            if (!path.match('^/$')) {
-                path = path.replace(/\/+$/, '');
-            }
-            return path;
-        }
-
         //==========================================================================================
         // public API
         //==========================================================================================
@@ -528,12 +518,14 @@ return (function () {
             if (elt.closest) {
                 return elt.closest(selector);
             } else {
+                // TODO remove when IE goes away
                 do{
                     if (elt == null || matches(elt, selector)){
                         return elt;
                     }
                 }
                 while (elt = elt && parentElt(elt));
+                return null;
             }
         }
 
@@ -950,11 +942,14 @@ return (function () {
 
         function attributeHash(elt) {
             var hash = 0;
-            for (var i = 0; i < elt.attributes.length; i++) {
-                var attribute = elt.attributes[i];
-                if(attribute.value){ // only include attributes w/ actual values (empty is same as non-existent)
-                    hash = stringHash(attribute.name, hash);
-                    hash = stringHash(attribute.value, hash);
+            // IE fix
+            if (elt.attributes) {
+                for (var i = 0; i < elt.attributes.length; i++) {
+                    var attribute = elt.attributes[i];
+                    if(attribute.value){ // only include attributes w/ actual values (empty is same as non-existent)
+                        hash = stringHash(attribute.name, hash);
+                        hash = stringHash(attribute.value, hash);
+                    }
                 }
             }
             return hash;
@@ -1402,7 +1397,7 @@ return (function () {
                 var verb, path;
                 if (elt.tagName === "A") {
                     verb = "get";
-                    path = elt.href; // DOM property gives the fully resolved href of a relative link
+                    path = getRawAttribute(elt, 'href');
                 } else {
                     var rawAttribute = getRawAttribute(elt, "method");
                     verb = rawAttribute ? rawAttribute.toLowerCase() : "get";
@@ -1411,7 +1406,7 @@ return (function () {
                     path = getRawAttribute(elt, 'action');
                 }
                 triggerSpecs.forEach(function(triggerSpec) {
-                    addEventListener(elt, function(evt) {
+                    addEventListener(elt, function(elt, evt) {
                         issueAjaxRequest(verb, path, elt, evt)
                     }, nodeData, triggerSpec, true);
                 });
@@ -1891,7 +1886,10 @@ return (function () {
                 } catch (e) {
                     logError(e);
                 } finally {
-                    parent.removeChild(script);
+                    // remove old script element, but only if it is still in DOM
+                    if (script.parentElement) {
+                        script.parentElement.removeChild(script);
+                    }
                 }
             }
         }
@@ -1922,9 +1920,10 @@ return (function () {
 
         function initButtonTracking(form){
             var maybeSetLastButtonClicked = function(evt){
-                if (matches(evt.target, "button, input[type='submit']")) {
+                var elt = closest(evt.target, "button, input[type='submit']");
+                if (elt !== null) {
                     var internalData = getInternalData(form);
-                    internalData.lastButtonClicked = evt.target;
+                    internalData.lastButtonClicked = elt;
                 }
             };
 
@@ -2176,7 +2175,7 @@ return (function () {
                 // and the new value could be arrays, so we have to handle all four cases :/
                 if (name != null && value != null) {
                     var current = values[name];
-                    if(current) {
+                    if (current !== undefined) {
                         if (Array.isArray(current)) {
                             if (Array.isArray(value)) {
                                 values[name] = current.concat(value);
@@ -2834,6 +2833,10 @@ return (function () {
                 headers['Content-Type'] = 'application/x-www-form-urlencoded';
             }
 
+            if (htmx.config.getCacheBusterParam && verb === 'get') {
+                filteredParameters['org.htmx.cache-buster'] = getRawAttribute(target, "id") || "true";
+            }
+
             // behavior of anchors w/ empty href is to use the current URL
             if (path == null || path === "") {
                 path = getDocument().location.href;
@@ -3213,7 +3216,11 @@ return (function () {
                                 // @ts-ignore
                                 if (selectionInfo.start && newActiveElt.setSelectionRange) {
                                     // @ts-ignore
-                                    newActiveElt.setSelectionRange(selectionInfo.start, selectionInfo.end);
+                                    try {
+                                        newActiveElt.setSelectionRange(selectionInfo.start, selectionInfo.end);
+                                    } catch (e) {
+                                        // the setSelectionRange method is present on fields that don't support it, so just let this fail
+                                    }
                                 }
                                 newActiveElt.focus(focusOptions);
                             }
