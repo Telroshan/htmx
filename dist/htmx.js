@@ -2305,6 +2305,10 @@ return (function () {
                         forEach(value, function(v) {
                             formData.append(name, v);
                         });
+                    } else if (value instanceof FileList) {
+                        for (var i = 0; i < value.length; i++) {
+                            formData.append(name, value[i]);
+                        }
                     } else {
                         formData.append(name, value);
                     }
@@ -2382,7 +2386,8 @@ return (function () {
          */
         function valuesContainAnyFile(inputValues) {
             for (var name in inputValues) {
-                if (inputValues[name] instanceof File) {
+                var value = inputValues[name]
+                if (value instanceof File || value instanceof FileList) {
                     return true
                 }
             }
