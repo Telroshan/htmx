@@ -11,6 +11,7 @@ title: </> htmx - Essays
 * [How Did REST Come To Mean The Opposite of REST?](/essays/how-did-rest-come-to-mean-the-opposite-of-rest/)
 * [Hypermedia-Driven Applications (HDAs)](/essays/hypermedia-driven-applications)
 * [HATEOAS](/essays/hateoas)
+* [Hypermedia Clients](/essays/hypermedia-clients)
 * [Locality of Behavior (LoB)](/essays/locality-of-behaviour)
 * [Splitting Your Data & Application APIs: Going Further](/essays/splitting-your-apis)
 * [Hypermedia APIs vs. Data APIs](/essays/hypermedia-apis-vs-data-apis)
@@ -38,34 +39,35 @@ title: </> htmx - Essays
     text-align: center;
   }
   .memes img {
+     min-height: 200px;
      max-width: 100%;
-     margin: 16px;
+     margin: 32px;
    }
 </style>
 <div class="memes">
-<img src="/img/memes/original.png">
-<img src="/img/memes/20yearold.png">
-<img src="/img/memes/extinction.png">
-<img src="/img/memes/restapi.png">
-<img src="/img/memes/whowillwin.png">
-<img src="/img/memes/frontenddevs.png">
-<img src="/img/memes/htmxanddjango.png">
-<img src="/img/memes/htmlvsjson.png">
-<img src="/img/memes/bellcurve.png">
-<img src="/img/memes/aye.png">
-<img src="/img/memes/justusehtml.png">
-<img src="/img/memes/dontknowwhatclientsideroutingis.png">
-<img src="/img/memes/drakearchitecture.png">
-<img src="/img/memes/nocap.png">
-<img src="/img/memes/ie11enjoyer.png">
-<img src="/img/memes/hydration.png">
-<img src="/img/memes/viewsource.png">
-<img src="/img/memes/javascripthistory.png">
-<img src="/img/memes/bellcurve2.png">
-<img src="/img/memes/dbtohtml.png">
-<img src="/img/memes/normal.png">
-<img src="/img/memes/uarealldoingitwrong.png">
-<img src="/img/memes/feelbad.png">
-<img src="/img/memes/drakememes.png">
-<img src="/img/memes/fullstack.jpg">
+<img loading="lazy" src="/img/memes/original.png">
+<img loading="lazy" src="/img/memes/20yearold.png">
+<img loading="lazy" src="/img/memes/whowillwin.png">
+<img loading="lazy" src="/img/memes/uarealldoingitwrong.png">
+<img loading="lazy" src="/img/memes/restapi.png">
+<img loading="lazy" src="/img/memes/justusehtml.png">
+<img loading="lazy" src="/img/memes/htmlvsjson.png">
+<img loading="lazy" src="/img/memes/dontknowwhatclientsideroutingis.png">
+<img loading="lazy" src="/img/memes/nocap.png">
+<img loading="lazy" src="/img/memes/ie11enjoyer.png">
+<img loading="lazy" src="/img/memes/hydration.png">
+<img loading="lazy" src="/img/memes/viewsource.png">
+<img loading="lazy" src="/img/memes/javascripthistory.png">
+<img loading="lazy" src="/img/memes/bellcurve.png">
+<img loading="lazy" src="/img/memes/drakearchitecture.png">
+<img loading="lazy" src="/img/memes/bellcurve2.png">
+<img loading="lazy" src="/img/memes/dbtohtml.png">
+<img loading="lazy" src="/img/memes/normal.png">
+<img loading="lazy" src="/img/memes/feelbad.png">
+<img loading="lazy" src="/img/memes/drakememes.png">
+<img loading="lazy" src="/img/memes/fullstack.jpg">
+<img loading="lazy" src="/img/memes/frontenddevs.png">
+<img loading="lazy" src="/img/memes/htmxanddjango.png">
+<img loading="lazy" src="/img/memes/aye.png">
+<img loading="lazy" src="/img/memes/extinction.png">
 </div>
