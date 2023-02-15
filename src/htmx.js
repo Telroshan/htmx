@@ -2390,6 +2390,13 @@ return (function () {
                 if (value instanceof File || value instanceof FileList) {
                     return true
                 }
+                if (Array.isArray(value)) {
+                    for (var i = 0; i < value.length; i++) {
+                        if (value[i] instanceof File) {
+                            return true
+                        }
+                    }
+                }
             }
             return false
         }
