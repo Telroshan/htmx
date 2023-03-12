@@ -1,10 +1,16 @@
-//AMD insanity
+// UMD insanity
+// This code sets up support for (in order) AMD, ES6 modules, and globals.
 (function (root, factory) {
     //@ts-ignore
     if (typeof define === 'function' && define.amd) {
         // AMD. Register as an anonymous module.
         //@ts-ignore
         define([], factory);
+    } else if (typeof module === 'object' && module.exports) {
+        // Node. Does not work with strict CommonJS, but
+        // only CommonJS-like environments that support module.exports,
+        // like Node.
+        module.exports = factory();
     } else {
         // Browser globals
         root.htmx = root.htmx || factory();
@@ -78,7 +84,7 @@ return (function () {
             writeLayout: writeLayout,
             resizeSelect: resizeSelect,
             globalParams: {},
-            version: "1.8.5"
+            version: "1.8.6"
         };
 
         /** @type {import("./htmx").HtmxInternalApi} */
@@ -1453,11 +1459,16 @@ return (function () {
         }
 
         function addEventListener(elt, handler, nodeData, triggerSpec, explicitCancel) {
+            var elementData = getInternalData(elt);
             var eltsToListenOn;
             if (triggerSpec.from) {
                 eltsToListenOn = querySelectorAllExt(elt, triggerSpec.from);
             } else {
                 eltsToListenOn = [elt];
+            }
+            // store the initial value of the element so we can tell if it changes
+            if (triggerSpec.changed) {
+                elementData.lastValue = elt.value;
             }
             forEach(eltsToListenOn, function (eltToListenOn) {
                 var eventListener = function (evt) {
@@ -1479,7 +1490,6 @@ return (function () {
                     if (eventData.handledFor == null) {
                         eventData.handledFor = [];
                     }
-                    var elementData = getInternalData(elt);
                     if (eventData.handledFor.indexOf(elt) < 0) {
                         eventData.handledFor.push(elt);
                         if (triggerSpec.consume) {
@@ -1534,7 +1544,7 @@ return (function () {
                     on: eltToListenOn
                 })
                 eltToListenOn.addEventListener(triggerSpec.trigger, eventListener);
-            })
+            });
         }
 
         var windowIsScrolling = false // used by initScrollHandler
@@ -2953,7 +2963,7 @@ return (function () {
                     
                     triggerEvent(elt, 'htmx:afterRequest', responseInfo);
                     triggerEvent(elt, 'htmx:afterOnLoad', responseInfo);
-                    // if the body no longer contains the element, trigger the even on the closest parent
+                    // if the body no longer contains the element, trigger the event on the closest parent
                     // remaining in the DOM
                     if (!bodyContains(elt)) {
                         var secondaryTriggerElt = null;
@@ -3165,6 +3175,7 @@ return (function () {
             
             isError = beforeSwapDetails.isError; // allow updating error
 
+            responseInfo.target = target; // Make updated target available to response events
             responseInfo.failed = isError; // Make failed property available to response events
             responseInfo.successful = !isError; // Make successful property available to response events	
             
