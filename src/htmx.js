@@ -1985,8 +1985,6 @@ return (function () {
                     deInitNode(elt);
                 }
 
-                triggerEvent(elt, "htmx:beforeProcessNode")
-
                 if (elt.value) {
                     nodeData.lastValue = elt.value;
                 }
@@ -2011,7 +2009,6 @@ return (function () {
                 if (wsInfo) {
                     processWebSocketInfo(elt, nodeData, wsInfo);
                 }
-                triggerEvent(elt, "htmx:afterProcessNode");
             }
         }
 
