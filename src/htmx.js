@@ -1281,6 +1281,8 @@ return (function () {
 
         var INPUT_SELECTOR = 'input, textarea, select';
 
+        let triggerConditionFunctions = {}
+
         /**
          * @param {HTMLElement} elt
          * @returns {import("./htmx").HtmxTriggerSpecification[]}
@@ -1300,7 +1302,17 @@ return (function () {
                             consumeUntil(tokens, NOT_WHITESPACE);
                             every.pollInterval = parseInterval(consumeUntil(tokens, /[,\[\s]/));
                             consumeUntil(tokens, NOT_WHITESPACE);
-                            var eventFilter = maybeGenerateConditional(elt, tokens, "event");
+                            var conditionalAsString = "";
+                            for (var i = 0; i < tokens.length; i++) {
+                                conditionalAsString += tokens[i]
+                            }
+                            var eventFilter = triggerConditionFunctions[conditionalAsString]
+                            if (eventFilter) {
+                                tokens.length = 0
+                            } else {
+                                eventFilter = maybeGenerateConditional(elt, tokens, "event")
+                                triggerConditionFunctions[conditionalAsString] = eventFilter
+                            }
                             if (eventFilter) {
                                 every.eventFilter = eventFilter;
                             }
@@ -1309,7 +1321,13 @@ return (function () {
                             triggerSpecs.push({trigger: 'sse', sseEvent: trigger.substring(4)});
                         } else {
                             var triggerSpec = {trigger: trigger};
-                            var eventFilter = maybeGenerateConditional(elt, tokens, "event");
+                            var eventFilter = triggerConditionFunctions[explicitTrigger]
+                            if (eventFilter) {
+                                tokens.length = 0
+                            } else {
+                                eventFilter = maybeGenerateConditional(elt, tokens, "event")
+                                triggerConditionFunctions[explicitTrigger] = eventFilter
+                            }
                             if (eventFilter) {
                                 triggerSpec.eventFilter = eventFilter;
                             }
