@@ -548,6 +548,8 @@ return (function () {
                 return [document];
             } else if (selector === 'window') {
                 return [window];
+            } else if (selector === 'body') {
+                return [document.body];
             } else {
                 return getDocument().querySelectorAll(selector);
             }
