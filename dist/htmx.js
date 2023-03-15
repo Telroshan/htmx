@@ -1281,7 +1281,8 @@ return (function () {
 
         var INPUT_SELECTOR = 'input, textarea, select';
 
-        let triggerConditionFunctions = {}
+        let triggerEventFilterEveryCache = {}
+        let triggerSpecsCache = {}
 
         /**
          * @param {HTMLElement} elt
@@ -1295,6 +1296,7 @@ return (function () {
                 do {
                     consumeUntil(tokens, NOT_WHITESPACE);
                     var initialLength = tokens.length;
+
                     var trigger = consumeUntil(tokens, /[,\[\s]/);
                     if (trigger !== "") {
                         if (trigger === "every") {
@@ -1306,12 +1308,12 @@ return (function () {
                             for (var i = 0; i < tokens.length; i++) {
                                 conditionalAsString += tokens[i]
                             }
-                            var eventFilter = triggerConditionFunctions[conditionalAsString]
+                            var eventFilter = triggerEventFilterEveryCache[conditionalAsString]
                             if (eventFilter) {
                                 tokens.length = 0
                             } else {
                                 eventFilter = maybeGenerateConditional(elt, tokens, "event")
-                                triggerConditionFunctions[conditionalAsString] = eventFilter
+                                triggerEventFilterEveryCache[conditionalAsString] = eventFilter
                             }
                             if (eventFilter) {
                                 every.eventFilter = eventFilter;
@@ -1320,59 +1322,68 @@ return (function () {
                         } else if (trigger.indexOf("sse:") === 0) {
                             triggerSpecs.push({trigger: 'sse', sseEvent: trigger.substring(4)});
                         } else {
-                            var triggerSpec = {trigger: trigger};
-                            var eventFilter = triggerConditionFunctions[explicitTrigger]
-                            if (eventFilter) {
+                            var triggerSpec = triggerSpecsCache[explicitTrigger];
+                            var isInCache = !!triggerSpec
+                            if (isInCache) {
                                 tokens.length = 0
                             } else {
+                                triggerSpec = {}
+                            }
+                            triggerSpec.trigger = trigger;
+
+                            if (!isInCache) {
                                 eventFilter = maybeGenerateConditional(elt, tokens, "event")
-                                triggerConditionFunctions[explicitTrigger] = eventFilter
-                            }
-                            if (eventFilter) {
-                                triggerSpec.eventFilter = eventFilter;
-                            }
-                            while (tokens.length > 0 && tokens[0] !== ",") {
-                                consumeUntil(tokens, NOT_WHITESPACE)
-                                var token = tokens.shift();
-                                if (token === "changed") {
-                                    triggerSpec.changed = true;
-                                } else if (token === "once") {
-                                    triggerSpec.once = true;
-                                } else if (token === "consume") {
-                                    triggerSpec.consume = true;
-                                } else if (token === "delay" && tokens[0] === ":") {
-                                    tokens.shift();
-                                    triggerSpec.delay = parseInterval(consumeUntil(tokens, WHITESPACE_OR_COMMA));
-                                } else if (token === "from" && tokens[0] === ":") {
-                                    tokens.shift();
-                                    var from_arg = consumeUntil(tokens, WHITESPACE_OR_COMMA);
-                                    if (from_arg === "closest" || from_arg === "find" || from_arg === "next" || from_arg === "previous") {
+                                if (eventFilter) {
+                                    triggerSpec.eventFilter = eventFilter;
+                                }
+
+                                while (tokens.length > 0 && tokens[0] !== ",") {
+                                    consumeUntil(tokens, NOT_WHITESPACE)
+                                    var token = tokens.shift();
+                                    if (token === "changed") {
+                                        triggerSpec.changed = true;
+                                    } else if (token === "once") {
+                                        triggerSpec.once = true;
+                                    } else if (token === "consume") {
+                                        triggerSpec.consume = true;
+                                    } else if (token === "delay" && tokens[0] === ":") {
                                         tokens.shift();
-                                        from_arg +=
-                                            " " +
-                                            consumeUntil(
-                                                tokens,
-                                                WHITESPACE_OR_COMMA
-                                            );
+                                        triggerSpec.delay = parseInterval(consumeUntil(tokens, WHITESPACE_OR_COMMA));
+                                    } else if (token === "from" && tokens[0] === ":") {
+                                        tokens.shift();
+                                        var from_arg = consumeUntil(tokens, WHITESPACE_OR_COMMA);
+                                        if (from_arg === "closest" || from_arg === "find" || from_arg === "next" || from_arg === "previous") {
+                                            tokens.shift();
+                                            from_arg +=
+                                                " " +
+                                                consumeUntil(
+                                                    tokens,
+                                                    WHITESPACE_OR_COMMA
+                                                );
+                                        }
+                                        triggerSpec.from = from_arg;
+                                    } else if (token === "target" && tokens[0] === ":") {
+                                        tokens.shift();
+                                        triggerSpec.target = consumeUntil(tokens, WHITESPACE_OR_COMMA);
+                                    } else if (token === "throttle" && tokens[0] === ":") {
+                                        tokens.shift();
+                                        triggerSpec.throttle = parseInterval(consumeUntil(tokens, WHITESPACE_OR_COMMA));
+                                    } else if (token === "queue" && tokens[0] === ":") {
+                                        tokens.shift();
+                                        triggerSpec.queue = consumeUntil(tokens, WHITESPACE_OR_COMMA);
+                                    } else if ((token === "root" || token === "threshold") && tokens[0] === ":") {
+                                        tokens.shift();
+                                        triggerSpec[token] = consumeUntil(tokens, WHITESPACE_OR_COMMA);
+                                    } else {
+                                        triggerErrorEvent(elt, "htmx:syntax:error", {token:tokens.shift()});
                                     }
-                                    triggerSpec.from = from_arg;
-                                } else if (token === "target" && tokens[0] === ":") {
-                                    tokens.shift();
-                                    triggerSpec.target = consumeUntil(tokens, WHITESPACE_OR_COMMA);
-                                } else if (token === "throttle" && tokens[0] === ":") {
-                                    tokens.shift();
-                                    triggerSpec.throttle = parseInterval(consumeUntil(tokens, WHITESPACE_OR_COMMA));
-                                } else if (token === "queue" && tokens[0] === ":") {
-                                    tokens.shift();
-                                    triggerSpec.queue = consumeUntil(tokens, WHITESPACE_OR_COMMA);
-                                } else if ((token === "root" || token === "threshold") && tokens[0] === ":") {
-                                    tokens.shift();
-                                    triggerSpec[token] = consumeUntil(tokens, WHITESPACE_OR_COMMA);
-                                } else {
-                                    triggerErrorEvent(elt, "htmx:syntax:error", {token:tokens.shift()});
                                 }
                             }
+                            
                             triggerSpecs.push(triggerSpec);
+                            if (!isInCache) {
+                                triggerSpecsCache[explicitTrigger] = triggerSpec
+                            }
                         }
                     }
                     if (tokens.length === initialLength) {
