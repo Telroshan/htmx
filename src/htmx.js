@@ -1310,6 +1310,7 @@ return (function () {
                             }
                             var eventFilter = triggerEventFilterEveryCache[conditionalAsString]
                             if (eventFilter) {
+                                eventFilter = {...eventFilter}
                                 tokens.length = 0
                             } else {
                                 eventFilter = maybeGenerateConditional(elt, tokens, "event")
@@ -1325,6 +1326,7 @@ return (function () {
                             var triggerSpec = triggerSpecsCache[explicitTrigger];
                             var isInCache = !!triggerSpec
                             if (isInCache) {
+                                triggerSpec = {...triggerSpec}
                                 tokens.length = 0
                             } else {
                                 triggerSpec = {}
