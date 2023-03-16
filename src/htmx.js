@@ -1775,7 +1775,7 @@ return (function () {
                         response = extension.transformResponse(response, null, elt);
                     });
 
-                    var swapSpec = getSwapSpecification(elt, false, true, null)
+                    var swapSpec = getSwapSpecification(elt, false, true, null, null)
                     var target = getTarget(elt)
                     var settleInfo = makeSettleInfo(elt);
 
@@ -2441,10 +2441,10 @@ return (function () {
          * @param {string} swapOverride
          * @returns {import("./htmx").HtmxSwapSpecification}
          */
-        function getSwapSpecification(elt, isError, isSse, swapOverride) {
+        function getSwapSpecification(elt, isError, isSse, swapOverride, errorSwapOverride) {
             var swapInfo;
             if (isError) {
-                swapInfo = getClosestAttributeValue(elt, "hx-error-swap");
+                swapInfo = errorSwapOverride || getClosestAttributeValue(elt, "hx-error-swap");
             } else if (typeof swapOverride === "string") {
                 swapInfo = swapOverride
             } else if (isSse) {
@@ -2696,6 +2696,8 @@ return (function () {
                             values : context.values,
                             targetOverride: resolveTarget(context.target),
                             swapOverride: context.swap,
+                            errorTargetOverride: resolveTarget(context.errorTarget),
+                            errorSwapOverride: context.errorSwap,
                             returnPromise: true,
                         });
                 }
@@ -2966,7 +2968,9 @@ return (function () {
                     finalRequestPath: finalPathForGet || path,
                     anchor: anchor
                 },
-                swapOverride: etc.swapOverride
+                swapOverride: etc.swapOverride,
+                errorTargetOverride: etc.errorTargetOverride,
+                errorSwapOverride: etc.errorSwapOverride,
             };
 
             xhr.onload = function () {
@@ -3198,7 +3202,7 @@ return (function () {
             responseInfo.successful = !isError; // Make successful property available to response events	
             
             if (isError) {
-                target = getErrorTarget(elt)
+                target = responseInfo.errorTargetOverride || getErrorTarget(elt)
                 if (!target) {
                     return
                 }
@@ -3223,7 +3227,7 @@ return (function () {
                 if (hasHeader(xhr,/HX-Reswap:/i)) {
                     swapOverride = xhr.getResponseHeader("HX-Reswap");
                 }
-                var swapSpec = getSwapSpecification(elt, isError, false, swapOverride);
+                var swapSpec = getSwapSpecification(elt, isError, false, swapOverride, responseInfo.errorSwapOverride);
 
                 if (target) {
                     target.classList.add(htmx.config.swappingClass);
