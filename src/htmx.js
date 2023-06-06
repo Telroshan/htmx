@@ -750,9 +750,9 @@ return (function () {
             if (attrTarget) {
                 if (attrTarget === "this") {
                     return [findThisElement(elt, attrName)];
-                } else if (attrTarget === "next-sibling") {
+                } else if (attrTarget === "nextElementSibling") {
                     return [elt.nextElementSibling]
-                } else if (attrTarget === "previous-sibling") {
+                } else if (attrTarget === "previousElementSibling") {
                     return [elt.previousElementSibling]
                 } else {
                     var result = querySelectorAllExt(elt, attrTarget);
@@ -778,9 +778,9 @@ return (function () {
                 var targetStr = getAttributeValue(explicitTarget, "hx-target")
                 if (targetStr === "this") {
                     return explicitTarget
-                } else if (targetStr === "next-sibling") {
+                } else if (targetStr === "nextElementSibling") {
                     return elt.nextElementSibling
-                } else if (targetStr === "previous-sibling") {
+                } else if (targetStr === "previousElementSibling") {
                     return elt.previousElementSibling
                 } else {
                     return querySelectorExt(elt, targetStr)
