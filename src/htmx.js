@@ -19,6 +19,9 @@
 return (function () {
         'use strict';
 
+        var GetTriggerSpecsCallsCount = 0
+        var GetTriggerSpecsElapsedTime = 0
+
         // Public API
         //** @type {import("./htmx").HtmxApi} */
         // TODO: list all methods in public API
@@ -83,7 +86,10 @@ return (function () {
                 sock.binaryType = htmx.config.wsBinaryType;
                 return sock;
             },
-            version: "1.9.3"
+            version: "1.9.3",
+            logGetTriggerSpecsPerformance: function () {
+                console.log("GetTriggerSpecs: ", GetTriggerSpecsElapsedTime,"ms, called",GetTriggerSpecsCallsCount,"times")
+            }
         };
 
         /** @type {import("./htmx").HtmxInternalApi} */
@@ -1211,6 +1217,8 @@ return (function () {
          * @returns {import("./htmx").HtmxTriggerSpecification[]}
          */
         function getTriggerSpecs(elt) {
+            GetTriggerSpecsCallsCount++
+            const startTime = performance.now()
             var explicitTrigger = getAttributeValue(elt, 'hx-trigger');
             var triggerSpecs = [];
             if (explicitTrigger) {
@@ -1288,6 +1296,9 @@ return (function () {
                     consumeUntil(tokens, NOT_WHITESPACE);
                 } while (tokens[0] === "," && tokens.shift())
             }
+
+            const endTime = performance.now()
+            GetTriggerSpecsElapsedTime += endTime-startTime
 
             if (triggerSpecs.length > 0) {
                 return triggerSpecs;
