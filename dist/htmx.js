@@ -1281,6 +1281,7 @@ return (function () {
 
         var INPUT_SELECTOR = 'input, textarea, select';
 
+        /** @type {Object<string, import("./htmx").HtmxTriggerSpecification[]>} */
         let triggerSpecsCache = {}
 
         /**
@@ -1294,9 +1295,9 @@ return (function () {
             if (shouldEvaluateTrigger) {
                 var cachedTriggerSpecs = triggerSpecsCache[explicitTrigger]
                 if (cachedTriggerSpecs) {
-                    cachedTriggerSpecs.forEach((triggerSpec) => {
-                        triggerSpecs.push({ ...triggerSpec })
-                    });
+                    cachedTriggerSpecs.forEach(function(cachedTriggerSpec) {
+                        triggerSpecs.push(cachedTriggerSpec)
+                    })
                     shouldEvaluateTrigger = false
                 }
             }
@@ -1381,6 +1382,10 @@ return (function () {
                     }
                     consumeUntil(tokens, NOT_WHITESPACE);
                 } while (tokens[0] === "," && tokens.shift())
+                triggerSpecsCache[explicitTrigger] = []
+                triggerSpecs.forEach(function (triggerSpec) {
+                    triggerSpecsCache[explicitTrigger].push(triggerSpec)
+                })
             }
 
             if (triggerSpecs.length > 0) {
