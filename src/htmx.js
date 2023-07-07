@@ -83,8 +83,14 @@ return (function () {
                 sock.binaryType = htmx.config.wsBinaryType;
                 return sock;
             },
-            version: "1.9.3"
+            version: "1.9.3",
+            logBodySelectorPerformance: function () {
+                console.log("querySelectorAllExt called", bodySelectorCount,"times with 'body', took", bodySelectorElapsed,"ms")
+            }
         };
+
+        var bodySelectorCount = 0
+        var bodySelectorElapsed = 0
 
         /** @type {import("./htmx").HtmxInternalApi} */
         var internalAPI = {
@@ -590,7 +596,13 @@ return (function () {
             } else if (selector === 'window') {
                 return [window];
             } else {
-                return getDocument().querySelectorAll(normalizeSelector(selector));
+                var start = performance.now()
+                var res = getDocument().querySelectorAll(normalizeSelector(selector));
+                if (selector === "body") {
+                    bodySelectorElapsed += (performance.now() - start)
+                    bodySelectorCount++
+                }
+                return res
             }
         }
 

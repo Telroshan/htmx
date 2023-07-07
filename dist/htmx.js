@@ -44,6 +44,7 @@ return (function () {
             defineExtension : defineExtension,
             removeExtension : removeExtension,
             logAll : logAll,
+            logNone : logNone,
             logger : null,
             config : {
                 historyEnabled:true,
@@ -82,8 +83,14 @@ return (function () {
                 sock.binaryType = htmx.config.wsBinaryType;
                 return sock;
             },
-            version: "1.9.2"
+            version: "1.9.3",
+            logBodySelectorPerformance: function () {
+                console.log("querySelectorAllExt called", bodySelectorCount,"times with 'body', took", bodySelectorElapsed,"ms")
+            }
         };
+
+        var bodySelectorCount = 0
+        var bodySelectorElapsed = 0
 
         /** @type {import("./htmx").HtmxInternalApi} */
         var internalAPI = {
@@ -475,6 +482,10 @@ return (function () {
             }
         }
 
+        function logNone() {
+            htmx.logger = null
+        }
+
         function find(eltOrSelector, selector) {
             if (selector) {
                 return eltOrSelector.querySelector(selector);
@@ -585,7 +596,13 @@ return (function () {
             } else if (selector === 'window') {
                 return [window];
             } else {
-                return getDocument().querySelectorAll(normalizeSelector(selector));
+                var start = performance.now()
+                var res = getDocument().querySelectorAll(normalizeSelector(selector));
+                if (selector === "body") {
+                    bodySelectorElapsed += (performance.now() - start)
+                    bodySelectorCount++
+                }
+                return res
             }
         }
 
@@ -902,6 +919,17 @@ return (function () {
             return hash;
         }
 
+        function deInitOnHandlers(elt) {
+            var internalData = getInternalData(elt);
+            if (internalData.onHandlers) {
+                for (let i = 0; i < internalData.onHandlers.length; i++) {
+                    const handlerInfo = internalData.onHandlers[i];
+                    elt.removeEventListener(handlerInfo.name, handlerInfo.handler);
+                }
+                delete internalData.onHandlers
+            }
+        }
+
         function deInitNode(element) {
             var internalData = getInternalData(element);
             if (internalData.timeout) {
@@ -920,12 +948,7 @@ return (function () {
                     }
                 });
             }
-            if (internalData.onHandlers) {
-                for (let i = 0; i < internalData.onHandlers.length; i++) {
-                    const handlerInfo = internalData.onHandlers[i];
-                    element.removeEventListener(handlerInfo.name, handlerInfo.handler);
-                }
-            }
+            deInitOnHandlers(element);
         }
 
         function cleanUpElement(element) {
@@ -950,7 +973,7 @@ return (function () {
                     newElt = eltBeforeNewContent.nextSibling;
                 }
                 getInternalData(target).replacedWith = newElt; // tuck away so we can fire events on it later
-                settleInfo.elts = [] // clear existing elements
+                settleInfo.elts = settleInfo.elts.filter(e => e != target);
                 while(newElt && newElt !== target) {
                     if (newElt.nodeType === Node.ELEMENT_NODE) {
                         settleInfo.elts.push(newElt);
@@ -1299,7 +1322,10 @@ return (function () {
             var nodeData = getInternalData(elt);
             nodeData.timeout = setTimeout(function () {
                 if (bodyContains(elt) && nodeData.cancelled !== true) {
-                    if (!maybeFilterEvent(spec, makeEvent('hx:poll:trigger', {triggerSpec:spec, target:elt}))) {
+                    if (!maybeFilterEvent(spec, elt, makeEvent('hx:poll:trigger', {
+                        triggerSpec: spec,
+                        target: elt
+                    }))) {
                         handler(elt);
                     }
                     processPolling(elt, handler, spec);
@@ -1361,11 +1387,11 @@ return (function () {
             return getInternalData(elt).boosted && elt.tagName === "A" && evt.type === "click" && (evt.ctrlKey || evt.metaKey);
         }
 
-        function maybeFilterEvent(triggerSpec, evt) {
+        function maybeFilterEvent(triggerSpec, elt, evt) {
             var eventFilter = triggerSpec.eventFilter;
             if(eventFilter){
                 try {
-                    return eventFilter(evt) !== true;
+                    return eventFilter.call(elt, evt) !== true;
                 } catch(e) {
                     triggerErrorEvent(getDocument().body, "htmx:eventFilter:error", {error: e, source:eventFilter.source});
                     return true;
@@ -1398,7 +1424,7 @@ return (function () {
                     if (explicitCancel || shouldCancel(evt, elt)) {
                         evt.preventDefault();
                     }
-                    if (maybeFilterEvent(triggerSpec, evt)) {
+                    if (maybeFilterEvent(triggerSpec, elt, evt)) {
                         return;
                     }
                     var eventData = getInternalData(evt);
@@ -1650,6 +1676,9 @@ return (function () {
                 var sseEventSource = getInternalData(sseSourceElt).sseEventSource;
                 var sseListener = function (event) {
                     if (maybeCloseSSESource(sseSourceElt)) {
+                        return;
+                    }
+                    if (!bodyContains(elt)) {
                         sseEventSource.removeEventListener(sseEventName, sseListener);
                         return;
                     }
@@ -1666,7 +1695,7 @@ return (function () {
                     var target = getTarget(elt)
                     var settleInfo = makeSettleInfo(elt);
 
-                    selectAndSwap(swapSpec.swapStyle, elt, target, response, settleInfo)
+                    selectAndSwap(swapSpec.swapStyle, target, elt, response, settleInfo)
                     settleImmediately(settleInfo.tasks)
                     triggerEvent(elt, "htmx:sseMessage", event)
                 };
@@ -1770,7 +1799,7 @@ return (function () {
                 observer.observe(elt);
                 addEventListener(elt, handler, nodeData, triggerSpec);
             } else if (triggerSpec.trigger === "load") {
-                if (!maybeFilterEvent(triggerSpec, makeEvent("load", {elt:elt}))) {
+                if (!maybeFilterEvent(triggerSpec, elt, makeEvent("load", {elt: elt}))) {
                                 loadImmediately(elt, handler, nodeData, triggerSpec.delay);
                             }
             } else if (triggerSpec.pollInterval) {
@@ -1818,6 +1847,16 @@ return (function () {
 
         function hasChanceOfBeingBoosted() {
             return document.querySelector("[hx-boost], [data-hx-boost]");
+        }
+
+        function findHxOnWildcardElements(elt) {
+            if (!document.evaluate) return []
+
+            let node = null
+            const elements = []
+            const iter = document.evaluate('//*[@*[ starts-with(name(), "hx-on:") or starts-with(name(), "data-hx-on:") ]]', elt)
+            while (node = iter.iterateNext()) elements.push(node)
+            return elements
         }
 
         function findElementsToProcess(elt) {
@@ -1879,7 +1918,7 @@ return (function () {
 
         function processHxOn(elt) {
             var hxOnValue = getAttributeValue(elt, 'hx-on');
-            if (hxOnValue) {
+            if (hxOnValue && htmx.config.allowEval) {
                 var handlers = {}
                 var lines = hxOnValue.split("\n");
                 var currentEvent = null;
@@ -1899,6 +1938,22 @@ return (function () {
 
                 for (var eventName in handlers) {
                     addHxOnEventHandler(elt, eventName, handlers[eventName]);
+                }
+            }
+        }
+
+        function processHxOnWildcard(elt) {
+            // wipe any previous on handlers so that this function takes precedence
+            deInitOnHandlers(elt)
+
+            for (const attr of elt.attributes) {
+                const { name, value } = attr
+                if (name.startsWith("hx-on:") || name.startsWith("data-hx-on:")) {
+                    let eventName = name.slice(name.indexOf(":") + 1)
+                    // if the eventName starts with a colon, prepend "htmx" for shorthand support
+                    if (eventName.startsWith(":")) eventName = "htmx" + eventName
+
+                    addHxOnEventHandler(elt, eventName, value)
                 }
             }
         }
@@ -1959,6 +2014,9 @@ return (function () {
             elt = resolveTarget(elt);
             initNode(elt);
             forEach(findElementsToProcess(elt), function(child) { initNode(child) });
+            // Because it happens second, the new way of adding onHandlers superseeds the old one
+            // i.e. if there are any hx-on:eventName attributes, the hx-on attribute will be ignored
+            forEach(findHxOnWildcardElements(elt), processHxOnWildcard);
         }
 
         //====================================================================
@@ -2963,7 +3021,7 @@ return (function () {
             var pathNoAnchor = splitPath[0];
             var anchor = splitPath[1];
             var finalPathForGet = null;
-            if (verb === 'get') {
+            if (verb === 'get' || verb === 'delete') {
                 finalPathForGet = pathNoAnchor;
                 var values = Object.keys(filteredParameters).length !== 0;
                 if (values) {
@@ -2977,7 +3035,7 @@ return (function () {
                         finalPathForGet += "#" + anchor;
                     }
                 }
-                xhr.open('GET', finalPathForGet, true);
+                xhr.open(verb.toUpperCase(), finalPathForGet, true);
             } else {
                 xhr.open(verb.toUpperCase(), path, true);
             }
