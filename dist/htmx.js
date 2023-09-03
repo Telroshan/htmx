@@ -57,6 +57,7 @@ return (function () {
                 settlingClass:'htmx-settling',
                 swappingClass:'htmx-swapping',
                 allowEval:true,
+                allowScriptTags:true,
                 inlineScriptNonce:'',
                 withCredentials:false,
                 timeout:0,
@@ -69,6 +70,7 @@ return (function () {
                 getCacheBusterParam: false,
                 globalViewTransitions: false,
                 methodsThatUseUrlParams: ["get", "delete"],
+                selfRequestsOnly: false
             },
             eventSources: [],
             parseInterval:parseInterval,
@@ -87,7 +89,7 @@ return (function () {
             writeLayout: writeLayout,
             resizeSelect: resizeSelect,
             globalParams: {},
-            version: "1.9.4"
+            version: "1.9.5"
         };
 
         /** @type {import("./htmx").HtmxInternalApi} */
@@ -2005,7 +2007,7 @@ return (function () {
         }
 
         function evalScript(script) {
-            if (script.type === "text/javascript" || script.type === "module" || script.type === "") {
+            if (htmx.config.allowScriptTags && (script.type === "text/javascript" || script.type === "module" || script.type === "") ) {
                 var newScript = getDocument().createElement("script");
                 forEach(script.attributes, function (attr) {
                     newScript.setAttribute(attr.name, attr.value);
@@ -2109,18 +2111,22 @@ return (function () {
         function addHxOnEventHandler(elt, eventName, code) {
             var nodeData = getInternalData(elt);
             nodeData.onHandlers = [];
-            var func = new Function("event", code + "; return;");
+            var func;
             var listener = function (e) {
-                return func.call(elt, e);
+                return maybeEval(elt, function() {
+                    if (!func) {
+                        func = new Function("event", code);
+                    }
+                    func.call(elt, e);
+                });
             };
             elt.addEventListener(eventName, listener);
             nodeData.onHandlers.push({event:eventName, listener:listener});
-            return {nodeData:nodeData, code:code, func:func, listener:listener};
         }
 
         function processHxOn(elt) {
             var hxOnValue = getAttributeValue(elt, 'hx-on');
-            if (hxOnValue && htmx.config.allowEval) {
+            if (hxOnValue) {
                 var handlers = {}
                 var lines = hxOnValue.split("\n");
                 var currentEvent = null;
@@ -2933,6 +2939,18 @@ return (function () {
             return arr;
         }
 
+        function verifyPath(elt, path, requestConfig) {
+            var url = new URL(path, document.location.href);
+            var origin = document.location.origin;
+            var sameHost = origin === url.origin;
+            if (htmx.config.selfRequestsOnly) {
+                if (!sameHost) {
+                    return false;
+                }
+            }
+            return triggerEvent(elt, "htmx:validateUrl", mergeObjects({url: url, sameHost: sameHost}, requestConfig));
+        }
+
         function issueAjaxRequest(verb, path, elt, event, etc, confirmed) {
             var resolve = null;
             var reject = null;
@@ -3163,6 +3181,11 @@ return (function () {
                     }
                 }
             }
+
+            if (!verifyPath(elt, finalPath, requestConfig)) {
+                triggerErrorEvent(elt, 'htmx:invalidPath', requestConfig)
+                return;
+            };
 
             xhr.open(verb.toUpperCase(), finalPath, true);
             xhr.overrideMimeType("text/html");
@@ -3700,9 +3723,22 @@ return (function () {
         //====================================================================
         // Initialization
         //====================================================================
+        var isReady = false
+        getDocument().addEventListener('DOMContentLoaded', function() {
+            isReady = true
+        })
 
+        /**
+         * Execute a function now if DOMContentLoaded has fired, otherwise listen for it.
+         *
+         * This function uses isReady because there is no realiable way to ask the browswer whether
+         * the DOMContentLoaded event has already been fired; there's a gap between DOMContentLoaded
+         * firing and readystate=complete.
+         */
         function ready(fn) {
-            if (getDocument().readyState !== 'loading') {
+            // Checking readyState here is a failsafe in case the htmx script tag entered the DOM by
+            // some means other than the initial page load.
+            if (isReady || getDocument().readyState === 'complete') {
                 fn();
             } else {
                 getDocument().addEventListener('DOMContentLoaded', fn);
