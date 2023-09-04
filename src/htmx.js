@@ -2394,6 +2394,12 @@ return (function () {
             if (elt.type === "radio" ) {
                 return elt.checked;
             }
+            if (elt.type === "checkbox") {
+                if (typeof elt.getAttribute("value") !== "string") {
+                    return true
+                }
+                return elt.checked
+            }
             return true;
         }
 
@@ -2429,7 +2435,7 @@ return (function () {
             if (shouldInclude(elt)) {
                 var name = getRawAttribute(elt,"name");
                 var value = elt.value;
-                if (elt.getAttribute("type") === "checkbox") {
+                if (elt.getAttribute("type") === "checkbox" && typeof elt.getAttribute("value") !== "string") {
                     value = elt.checked
                 }
                 if (elt.multiple) {
