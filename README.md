@@ -3,8 +3,8 @@
 # Changes in this fork
 ## Fixes
 - Fix outerHTML swap if parent is null (i.e. too fast clicking for example) : an error would be fired trying to access the parent's properties and block further interactions with the element => now ignored when parent is null
-- The [`checked`](https://developer.mozilla.org/en/docs/Web/HTML/Element/Input/checkbox#checked) attribute is used instead of the [`value`](https://developer.mozilla.org/en/docs/Web/HTML/Element/Input/checkbox#value) attribute for checkbox inputs, when building the request payload, which can then correctly be parsed as a boolean by the backend
-- Unchecked checkboxes aren't excluded anymore from request payload _(I needed this for PATCH requests for example)_
+- When a checkbox input doesn't define a [`value`](https://developer.mozilla.org/en/docs/Web/HTML/Element/Input/checkbox#value) attribute, the [`checked`](https://developer.mozilla.org/en/docs/Web/HTML/Element/Input/checkbox#checked) attribute is used instead when building the request payload, which results in proper boolean values to be parsed by the backend, rather than the default `on` value that seems unusable to me
+- Unchecked checkboxes that don't define a [`value`](https://developer.mozilla.org/en/docs/Web/HTML/Element/Input/checkbox#value) attribute aren't excluded anymore from request payload _(I needed this for some PATCH requests for example, where I require an explicit true/false value for a given parameter to toggle a bool in the database)_
 - Fix target and source elements sent to `selectAndSwap` during the **SSE** swapping process that were inverted in the original code, now allowing to properly use `hx-target` for example to specify which element to swap with SSE
 - [SSE swap listeners](https://htmx.org/attributes/hx-sse/) are now removed from the event sources when the associated element gets removed from the page
 - Values passed along a `DELETE` request are encoded as URL parameters _(as for a `GET` request)_ instead of being sent as form data 
