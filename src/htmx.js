@@ -89,7 +89,7 @@ return (function () {
             writeLayout: writeLayout,
             resizeSelect: resizeSelect,
             globalParams: {},
-            version: "1.9.5"
+            version: "1.9.6"
         };
 
         /** @type {import("./htmx").HtmxInternalApi} */
@@ -808,6 +808,27 @@ return (function () {
                     return [elt.previousElementSibling]
                 } else {
                     var result = querySelectorAllExt(elt, attrTarget);
+                    // find `inherit` in string, make sure it's surrounded by commas or is at the start/end of string
+                    var shouldInherit = new RegExp(/(^|,)(\s*)inherit(\s*)($|,)/).test(attrTarget)
+                    if (shouldInherit) {
+                        var eltToInheritFrom = getClosestMatch(elt, function (parent) {
+                            return parent !== elt && parent.hasAttribute(attrName)
+                        })
+                        if (eltToInheritFrom) {
+                            var targetsToInherit = findAttributeTargets(eltToInheritFrom, attrName)
+                            if (targetsToInherit) {
+                                // Can't push to a NodeList (returned by document.querySelectorAll), and Array.from is IE11 incompatible
+                                var newResult = [], i
+                                for (i = 0; i < result.length; i++) {
+                                    newResult.push(result[i])
+                                }
+                                for (i = 0; i < targetsToInherit.length; i++) {
+                                    newResult.push(targetsToInherit[i])
+                                }
+                                result = newResult
+                            }
+                        }
+                    }
                     if (result.length === 0) {
                         logWarning('The selector "' + attrTarget + '" on ' + attrName + " returned no matches!");
                         return []
@@ -2701,6 +2722,9 @@ return (function () {
                         if (modifier.indexOf("transition:") === 0) {
                             swapSpec["transition"] = modifier.substr(11) === "true";
                         }
+                        if (modifier.indexOf("ignoreTitle:") === 0) {
+                            swapSpec["ignoreTitle"] = modifier.substr(12) === "true";
+                        }
                         if (modifier.indexOf("scroll:") === 0) {
                             var scrollSpec = modifier.substr(7);
                             var splitSpec = scrollSpec.split(":");
@@ -3436,7 +3460,8 @@ return (function () {
             // overriding the detail.shouldSwap property
             var shouldSwap = xhr.status >= 200 && xhr.status < 400 && xhr.status !== 204;
             var serverResponse = xhr.response;
-            var beforeSwapDetails = mergeObjects({shouldSwap: shouldSwap, serverResponse:serverResponse, isError:isError}, responseInfo);
+            var ignoreTitle = htmx.config.ignoreTitle
+            var beforeSwapDetails = mergeObjects({shouldSwap: shouldSwap, serverResponse:serverResponse, isError:isError, ignoreTitle:ignoreTitle }, responseInfo);
             if (isError) {
                 beforeSwapDetails.shouldSwap = true
             }
@@ -3446,6 +3471,7 @@ return (function () {
             serverResponse = beforeSwapDetails.serverResponse; // allow updating content
             
             isError = beforeSwapDetails.isError; // allow updating error
+            ignoreTitle = beforeSwapDetails.ignoreTitle; // allow updating ignoring title
 
             responseInfo.target = target; // Make updated target available to response events
             responseInfo.failed = isError; // Make failed property available to response events
@@ -3481,6 +3507,9 @@ return (function () {
 
                 if (target) {
                     target.classList.add(htmx.config.swappingClass);
+                }
+                if (swapSpec.hasOwnProperty('ignoreTitle')) {
+                    ignoreTitle = swapSpec.ignoreTitle;
                 }
 
                 // optional transition API promise callbacks
@@ -3576,7 +3605,7 @@ return (function () {
                                 }
                             }
 
-                            if(settleInfo.title) {
+                            if(settleInfo.title && !ignoreTitle) {
                                 var titleElt = find("title");
                                 if(titleElt) {
                                     titleElt.innerHTML = settleInfo.title;
