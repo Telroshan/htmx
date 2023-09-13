@@ -3244,6 +3244,7 @@ return (function () {
                 swapOverride: etc.swapOverride,
                 errorTargetOverride: etc.errorTargetOverride,
                 errorSwapOverride: etc.errorSwapOverride,
+                defaultHandler: handleAjaxResponse,
             };
 
             xhr.onload = function () {
