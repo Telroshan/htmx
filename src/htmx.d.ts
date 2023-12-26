@@ -436,6 +436,22 @@ export interface HtmxConfig {
      * @default null
      */
     triggerSpecsCache?: {[trigger: string]: HtmxTriggerSpecification[]};
+    /**
+     * The default swap style to use if [`hx-error-swap`](https://htmx.org/attributes/hx-error-swap.md) is omitted
+     * @default "none"
+     */
+    defaultErrorSwapStyle?: string;
+    /**
+     * The default target strategy to use if [`hx-error-target`](https://htmx.org/attributes/hx-error-target.md) is omitted
+     * @default "mirror"
+     */
+    defaultErrorTarget?: string;
+    /**
+     * The [HTTP error codes](https://developer.mozilla.org/docs/Web/HTTP/Status) to enable errors swapping for (all other error codes will be ignored).
+     * If empty, all error codes will be swapped
+     * @default []
+     */
+    httpErrorCodesToSwap?: string[]
 }
 
 /**
