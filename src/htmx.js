@@ -957,22 +957,6 @@ return (function () {
         }
 
         function handleOutOfBandSwaps(elt, fragment, settleInfo) {
-            var oobSelects = getClosestAttributeValue(elt, "hx-select-oob");
-            if (oobSelects) {
-                var oobSelectValues = oobSelects.split(",");
-                for (var i = 0; i < oobSelectValues.length; i++) {
-                    var oobSelectValue = oobSelectValues[i].split(":", 2);
-                    var id = oobSelectValue[0].trim();
-                    if (id.indexOf("#") === 0) {
-                        id = id.substring(1);
-                    }
-                    var oobValue = oobSelectValue[1] || "true";
-                    var oobElement = fragment.querySelector("#" + id);
-                    if (oobElement) {
-                        oobSwap(oobValue, oobElement, settleInfo);
-                    }
-                }
-            }
             forEach(findAll(fragment, '[hx-swap-oob], [data-hx-swap-oob]'), function (oobElement) {
                 var oobValue = getAttributeValue(oobElement, "hx-swap-oob");
                 if (oobValue != null) {
@@ -1187,18 +1171,6 @@ return (function () {
             }
         }
 
-        function maybeSelectFromResponse(elt, fragment, selectOverride) {
-            var selector = selectOverride || getClosestAttributeValue(elt, "hx-select");
-            if (selector) {
-                var newFragment = getDocument().createDocumentFragment();
-                forEach(fragment.querySelectorAll(selector), function (node) {
-                    newFragment.appendChild(node);
-                });
-                fragment = newFragment;
-            }
-            return fragment;
-        }
-
         function swap(swapStyle, elt, target, fragment, settleInfo, defaultSwapStyle) {
             switch (swapStyle) {
                 case "none":
@@ -1261,12 +1233,11 @@ return (function () {
             }
         }
 
-        function selectAndSwap(swapStyle, target, elt, responseText, settleInfo, selectOverride, defaultSwapStyle) {
+        function selectAndSwap(swapStyle, target, elt, responseText, settleInfo, defaultSwapStyle) {
             settleInfo.title = findTitle(responseText);
             var fragment = makeFragment(responseText);
             if (fragment) {
                 handleOutOfBandSwaps(elt, fragment, settleInfo);
-                fragment = maybeSelectFromResponse(elt, fragment, selectOverride);
                 handlePreservedElements(fragment);
                 return swap(swapStyle, elt, target, fragment, settleInfo, defaultSwapStyle);
             }
@@ -1798,7 +1769,7 @@ return (function () {
                     var target = getTarget(elt)
                     var settleInfo = makeSettleInfo(elt);
 
-                    selectAndSwap(swapSpec.swapStyle, target, elt, response, settleInfo, null, htmx.config.defaultSwapStyle)
+                    selectAndSwap(swapSpec.swapStyle, target, elt, response, settleInfo, htmx.config.defaultSwapStyle)
                     writeLayout(function() {
                         settleImmediately(settleInfo.tasks)
                         triggerEvent(elt, "htmx:sseMessage", event)
@@ -3598,15 +3569,6 @@ return (function () {
                             // safari issue - see https://github.com/microsoft/playwright/issues/5894
                         }
 
-                        var selectOverride;
-                        if (select) {
-                            selectOverride = select;
-                        }
-
-                        if (hasHeader(xhr, /HX-Reselect:/i)) {
-                            selectOverride = xhr.getResponseHeader("HX-Reselect");
-                        }
-
                         // if we need to save history, do so, before swapping so that relative resources have the correct base URL
                         if (historyUpdate.type) {
                             triggerEvent(getDocument().body, 'htmx:beforeHistoryUpdate', mergeObjects({ history: historyUpdate }, responseInfo));
@@ -3620,7 +3582,7 @@ return (function () {
                         }
 
                         var settleInfo = makeSettleInfo(target);
-                        selectAndSwap(swapSpec.swapStyle, target, elt, serverResponse, settleInfo, selectOverride, swapSpec.defaultSwapStyle);
+                        selectAndSwap(swapSpec.swapStyle, target, elt, serverResponse, settleInfo, swapSpec.defaultSwapStyle);
 
                         if (selectionInfo.elt &&
                             !bodyContains(selectionInfo.elt) &&
