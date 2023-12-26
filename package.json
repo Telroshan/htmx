@@ -25,13 +25,14 @@
   "unpkg": "dist/htmx.min.js",
   "web-types": "editors/jetbrains/htmx.web-types.json",
   "scripts": {
-    "dist": "./scripts/dist.sh",
+    "dist": "cp -r src/* dist/ && npm run-script uglify && gzip -9 -k -f dist/htmx.min.js > dist/htmx.min.js.gz && exit",
     "lint": "eslint src/htmx.js test/attributes/ test/core/ test/util/",
     "format": "eslint --fix src/htmx.js test/attributes/ test/core/ test/util/",
     "test": "mocha-chrome test/index.html",
     "test-types": "tsc --project ./jsconfig.json",
     "ws-tests": "cd ./test/ws-sse && node ./server.js",
-    "www": "bash ./scripts/www.sh"
+    "www": "bash ./scripts/www.sh",
+    "uglify": "uglifyjs -m eval -o dist/htmx.min.js dist/htmx.js"
   },
   "repository": {
     "type": "git",
