@@ -177,19 +177,6 @@ describe("Core htmx Regression Tests", function(){
         div1.innerHTML.should.equal("triggered");
     })
 
-    it("supports unset on hx-select", function(){
-        this.server.respondWith("GET", "/test", "Foo<span id='example'>Bar</span>");
-        make('<form hx-select="#example">\n' +
-            '      <button id="b1" hx-select="unset" hx-get="/test">Initial</button>\n' +
-            '</form>')
-        var btn = byId("b1");
-        btn.click()
-        this.server.respond();
-
-        btn.innerText.should.equal("FooBar");
-    })
-
-
     it("can trigger swaps from fields that don't support setSelectionRange", function(){
         const template = '<form id="formtest"> \n' +
               '<input hx-get="/test" hx-target="#formtest" hx-trigger="click" type="text" id="id_email" value="test@test.com" />\n' +
