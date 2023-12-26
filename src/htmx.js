@@ -94,7 +94,6 @@ return (function () {
             },
             readLayout: readLayout,
             writeLayout: writeLayout,
-            resizeSelect: resizeSelect,
             globalParams: {},
             version: "1.9.10"
         };
@@ -719,16 +718,8 @@ return (function () {
         // Layout read/write queues & utilities
         //====================================================================
 
-        /** @type HTMLSelectElement */
-        let hiddenSelect
-        /** @type HTMLOptionElement */
-        let hiddenSelectOption
         /** @type Array<Function> */
         let layoutReadsQueue = [], layoutWritesQueue = []
-        /** @type Array<HTMLSelectElement> */
-        const selectsToResize = []
-        /** @type HTMLSelectElement */
-        let selectResizing
 
         // Wrap in a function so that all usages can be well minified instead of direct un-minifiable property access
         function areLayoutQueuesEnabled() {
@@ -756,15 +747,6 @@ return (function () {
                 callback()
             }
         }
-        
-        /** @param {HTMLSelectElement} select */
-        function resizeSelect(select) {
-            if (select.options.length > 1 && select.options[select.selectedIndex]) {
-                readLayout(function () {
-                    selectsToResize.push(select)
-                })
-            }
-        }
 
         function processLayoutQueues() {
             const readsQueue = layoutReadsQueue
@@ -773,49 +755,6 @@ return (function () {
                 readsQueue[i]()
             }
             readsQueue.length = 0
-            if (selectResizing) {
-                const newWidth = hiddenSelect.offsetWidth
-                if (document.hidden) {
-                    selectResizing.style.setProperty("width", newWidth + "px")
-                    selectResizing = undefined
-                } else {
-                    writeLayout(function () {
-                        selectResizing.style.setProperty("width", newWidth + "px")
-                        selectResizing = undefined
-                    })
-                }
-            } else if (selectsToResize.length > 0) {
-                selectResizing = selectsToResize[0]
-                selectsToResize.splice(0, 1)
-                const option = selectResizing.options[selectResizing.selectedIndex]
-                const computedStyle = getComputedStyle(selectResizing)
-                const height = computedStyle.getPropertyValue("height")
-                const padding = computedStyle.getPropertyValue("padding")
-                const fontFamily = computedStyle.getPropertyValue("font-family")
-                const border = computedStyle.getPropertyValue("border")
-                const boxSizing = computedStyle.getPropertyValue("box-sizing")
-                const appearance = computedStyle.getPropertyValue("appearance")
-                const textContent = option.textContent.trim()
-                if (document.hidden) {
-                    hiddenSelectOption.textContent = textContent
-                    hiddenSelect.style.setProperty("height", height)
-                    hiddenSelect.style.setProperty("padding", padding)
-                    hiddenSelect.style.setProperty("fontFamily", fontFamily)
-                    hiddenSelect.style.setProperty("border", border)
-                    hiddenSelect.style.setProperty("boxSizing", boxSizing)
-                    hiddenSelect.style.setProperty("appearance", appearance)
-                } else {
-                    writeLayout(function () {
-                        hiddenSelectOption.textContent = textContent
-                        hiddenSelect.style.setProperty("height", height)
-                        hiddenSelect.style.setProperty("padding", padding)
-                        hiddenSelect.style.setProperty("fontFamily", fontFamily)
-                        hiddenSelect.style.setProperty("border", border)
-                        hiddenSelect.style.setProperty("boxSizing", boxSizing)
-                        hiddenSelect.style.setProperty("appearance", appearance)
-                    })
-                }
-            }
         
             const writesQueue = layoutWritesQueue
             layoutWritesQueue = []
@@ -831,15 +770,6 @@ return (function () {
         }
 
         function initializeLayoutReadWrite() {
-            hiddenSelect = document.createElement("select")
-            hiddenSelect.id = "hiddenSelect"
-            hiddenSelect.setAttribute("tabIndex", "-1")
-            hiddenSelect.style.position = "absolute"
-            hiddenSelect.style.left = "-100%"
-            hiddenSelect.style.top = "-100%"
-            hiddenSelectOption = hiddenSelect.appendChild(document.createElement("option"))
-            document.body.appendChild(hiddenSelect)
-
             requestAnimationFrame(processLayoutQueuesRecursive)
         }
 
