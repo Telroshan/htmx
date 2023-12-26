@@ -720,6 +720,7 @@ return (function () {
 
         /** @type Array<Function> */
         let layoutReadsQueue = [], layoutWritesQueue = []
+        let layoutQueuesRunning = false
 
         // Wrap in a function so that all usages can be well minified instead of direct un-minifiable property access
         function areLayoutQueuesEnabled() {
@@ -729,6 +730,9 @@ return (function () {
         function readLayout(callback) {
             if (areLayoutQueuesEnabled()) {
                 layoutReadsQueue.push(callback)
+                if (!layoutQueuesRunning) {
+                    initializeLayoutQueues()
+                }
                 if (document.hidden) {
                     processLayoutQueues()
                 }
@@ -740,6 +744,9 @@ return (function () {
         function writeLayout(callback) {
             if (areLayoutQueuesEnabled()) {
                 layoutWritesQueue.push(callback)
+                if (!layoutQueuesRunning) {
+                    initializeLayoutQueues()
+                }
                 if (document.hidden) {
                     processLayoutQueues()
                 }
@@ -765,11 +772,15 @@ return (function () {
         }
 
         function processLayoutQueuesRecursive() {
+            if (!areLayoutQueuesEnabled()) {
+                return
+            }
             processLayoutQueues()            
             requestAnimationFrame(processLayoutQueuesRecursive)
         }
 
-        function initializeLayoutReadWrite() {
+        function initializeLayoutQueues() {
+            layoutQueuesRunning = true
             requestAnimationFrame(processLayoutQueuesRecursive)
         }
 
@@ -4109,7 +4120,9 @@ return (function () {
             window.addEventListener("beforeunload", function () {
                 tabIsClosing = true
             })
-            initializeLayoutReadWrite()
+            if (areLayoutQueuesEnabled()) {
+                initializeLayoutQueues()
+            }
             setTimeout(function () {
                 triggerEvent(body, 'htmx:load', {}); // give ready handlers a chance to load up before firing this event
                 body = null; // kill reference for gc
