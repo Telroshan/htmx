@@ -32,10 +32,13 @@
 <script src="../node_modules/chai/chai.js"></script>
 <script src="../node_modules/chai-dom/chai-dom.js"></script>
 <script src="../node_modules/mocha/mocha.js"></script>
-<script src="../node_modules/mocha-webdriver-runner/dist/mocha-webdriver-client.js"></script>
+<script src="../node_modules/mocha-webdriver/dist/index.js"></script>
 <script src="../node_modules/sinon/pkg/sinon.js"></script>
 <script src="../node_modules/mock-socket/dist/mock-socket.js"></script>
 <script src="../src/htmx.js"></script>
+<script>
+    htmx.config.layoutQueuesEnabled = false
+</script>
 <script>
   // Do not log all the events in headless mode (the log output is enormous)
   if (navigator.webdriver) {
@@ -49,7 +52,7 @@
 <script class="mocha-init">
     mocha.setup('bdd');
     mocha.checkLeaks();
-    should = chai.should();
+    window.should = window.chai.should()
 </script>
 
 <script src="util/util.js"></script>
@@ -80,8 +83,6 @@
 <script src="attributes/hx-indicator.js"></script>
 <script src="attributes/hx-disabled-elt.js"></script>
 <script src="attributes/hx-disinherit.js"></script>
-<script src="attributes/hx-on.js"></script>
-<script src="attributes/hx-on-wildcard.js"></script>
 <script src="attributes/hx-params.js"></script>
 <script src="attributes/hx-patch.js"></script>
 <script src="attributes/hx-post.js"></script>
@@ -89,17 +90,16 @@
 <script src="attributes/hx-push-url.js"></script>
 <script src="attributes/hx-put.js"></script>
 <script src="attributes/hx-request.js"></script>
-<script src="attributes/hx-select.js"></script>
-<script src="attributes/hx-select-oob.js"></script>
 <script src="attributes/hx-sse.js"></script>
 <script src="attributes/hx-swap-oob.js"></script>
 <script src="attributes/hx-swap.js"></script>
+<script src="attributes/hx-error-swap.js"></script>
 <script src="attributes/hx-sync.js"></script>
 <script src="attributes/hx-target.js"></script>
+<script src="attributes/hx-error-target.js"></script>
 <script src="attributes/hx-trigger.js"></script>
 <script src="attributes/hx-vals.js"></script>
 <script src="attributes/hx-vars.js"></script>
-<script src="attributes/hx-ws.js"></script>
 
 <!-- hyperscript integration -->
 <script src="lib/_hyperscript.js"></script>
@@ -152,8 +152,8 @@
 <script src="../src/ext/disable-element.js"></script>
 <script src="ext/disable-element.js"></script>
 
-<script src="../src/ext/multi-swap.js"></script>
-<script src="ext/multi-swap.js"></script>
+<!--<script src="../src/ext/multi-swap.js"></script>-->
+<!--<script src="ext/multi-swap.js"></script>-->
 
 <script src="../src/ext/ws.js"></script>
 <script src="ext/ws.js"></script>

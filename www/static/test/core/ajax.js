@@ -316,64 +316,6 @@ describe("Core htmx AJAX Tests", function(){
         div.innerHTML.should.equal("click 2");
     });
 
-    it('properly handles hx-select for basic situation', function()
-    {
-        var i = 1;
-        this.server.respondWith("GET", "/test", "<div id='d1'>foo</div><div id='d2'>bar</div>");
-        var div = make('<div hx-get="/test" hx-select="#d1"></div>');
-        div.click();
-        this.server.respond();
-        div.innerHTML.should.equal("<div id=\"d1\">foo</div>");
-    });
-
-    it('properly handles hx-select for full html document situation', function()
-    {
-        this.server.respondWith("GET", "/test", "<html><body><div id='d1'>foo</div><div id='d2'>bar</div></body></html>");
-        var div = make('<div hx-get="/test" hx-select="#d1"></div>');
-        div.click();
-        this.server.respond();
-        div.innerHTML.should.equal("<div id=\"d1\">foo</div>");
-    });
-
-    it('properly settles attributes on interior elements', function(done)
-    {
-        this.server.respondWith("GET", "/test", "<div hx-get='/test'><div width='bar' id='d1'></div></div>");
-        var div = make("<div hx-get='/test' hx-swap='outerHTML settle:10ms'><div id='d1'></div></div>");
-        div.click();
-        this.server.respond();
-        should.equal(byId("d1").getAttribute("width"), null);
-        setTimeout(function () {
-            should.equal(byId("d1").getAttribute("width"), "bar");
-            done();
-        }, 20);
-    });
-
-    it('properly settles attributes elements with single quotes in id', function(done)
-    {
-        this.server.respondWith("GET", "/test", "<div hx-get='/test'><div width='bar' id=\"d1'\"></div></div>");
-        var div = make("<div hx-get='/test' hx-swap='outerHTML settle:10ms'><div id=\"d1'\"></div></div>");
-        div.click();
-        this.server.respond();
-        should.equal(byId("d1'").getAttribute("width"), null);
-        setTimeout(function () {
-            should.equal(byId("d1'").getAttribute("width"), "bar");
-            done();
-        }, 20);
-    });
-
-    it('properly settles attributes elements with double quotes in id', function(done)
-    {
-        this.server.respondWith("GET", "/test", "<div hx-get='/test'><div width='bar' id='d1\"'></div></div>");
-        var div = make("<div hx-get='/test' hx-swap='outerHTML settle:10ms'><div id='d1\"'></div></div>");
-        div.click();
-        this.server.respond();
-        should.equal(byId("d1\"").getAttribute("width"), null);
-        setTimeout(function () {
-            should.equal(byId("d1\"").getAttribute("width"), "bar");
-            done();
-        }, 20);
-    });
-
     it('properly handles multiple select input', function()
     {
         var values;
@@ -1290,7 +1232,6 @@ describe("Core htmx AJAX Tests", function(){
         const template = '<form ' +
               'id="hello" ' +
               'hx-target="#hello" ' +
-              'hx-select="#hello" ' +
               'hx-swap="outerHTML" ' +
               'hx-post="/test">\n' +
               '<input id="input" type="text" name="name" />\n' +
@@ -1314,4 +1255,27 @@ describe("Core htmx AJAX Tests", function(){
         this.server.respond();
         values.should.deep.equal({name: "", outside: ""});
     })
+    
+    it('400 content can be swapped if configured to do so in htmx.config', function () {
+        this.server.respondWith("GET", "/test", function (xhr) {
+            xhr.respond(400, {}, "Clicked!");
+        });
+        var initialConfig = htmx.config.defaultErrorSwapStyle
+        htmx.config.defaultErrorSwapStyle = "innerHTML"
+        var btn = make('<button hx-get="/test">Click Me!</button>')
+        btn.click();
+        this.server.respond();
+        btn.innerText.should.equal("Clicked!");
+        htmx.config.defaultErrorSwapStyle = initialConfig
+    });
+
+    it('400 content can be swapped with hx-error-target and hx-error-swap', function () {
+        this.server.respondWith("GET", "/test", function (xhr) {
+            xhr.respond(400, {}, "Clicked!");
+        });
+        var btn = make('<button hx-get="/test" hx-error-target="this" hx-error-swap="innerHTML">Click Me!</button>')
+        btn.click();
+        this.server.respond();
+        btn.innerText.should.equal("Clicked!");
+    });
 })

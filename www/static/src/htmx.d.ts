@@ -48,7 +48,7 @@ export function ajax(verb: string, path: string, selector: string): Promise<void
 export function ajax(
     verb: string,
     path: string,
-    context: Partial<{ source: any; event: any; handler: any; target: any; swap: any; values: any; headers: any; select: any }>
+    context: Partial<{ source: any; event: any; handler: any; target: any; errorTarget:any; swap: any; errorSwap: any; values: any; headers: any; select: any }>
 ): Promise<void>;
 
 /**
@@ -436,6 +436,38 @@ export interface HtmxConfig {
      * @default null
      */
     triggerSpecsCache?: {[trigger: string]: HtmxTriggerSpecification[]};
+    /**
+     * The default swap style to use if [`hx-error-swap`](https://htmx.org/attributes/hx-error-swap.md) is omitted
+     * @default "none"
+     */
+    defaultErrorSwapStyle?: string;
+    /**
+     * The default target strategy to use if [`hx-error-target`](https://htmx.org/attributes/hx-error-target.md) is omitted
+     * @default "mirror"
+     */
+    defaultErrorTarget?: string;
+    /**
+     * The [HTTP error codes](https://developer.mozilla.org/docs/Web/HTTP/Status) to enable errors swapping for (all other error codes will be ignored).
+     * If empty, all error codes will be swapped
+     * @default []
+     */
+    httpErrorCodesToSwap?: string[];
+    /**
+     * Whether to enable the read/write layout queues system to avoid layout thrashing, delaying layout reads and writes across animation frames
+     * @default true
+     */
+    layoutQueuesEnabled?: boolean;
+    /**
+     * Whether to throttle elements clean up by chunks of 4ms of work across animation frames
+     * @default false
+     */
+    cleanUpThrottlingEnabled?: boolean;
+    /**
+     * A key-value pair object of htmx events to disable, i.e. to avoid firing.
+     * For ex setting it to `{ "htmx:afterRequest": true }` would result in no `htmx:afterRequest` event being fired at all
+     * @default {}
+     */
+    disabledEvents?: object;
 }
 
 /**

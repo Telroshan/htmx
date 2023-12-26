@@ -28,7 +28,7 @@ describe("sse extension", function() {
                         var event = htmx._("makeEvent")(eventName);
                         event.data = data;
                         listener(event);
-                    }
+                    })
                 }
             },
             close: function() {
