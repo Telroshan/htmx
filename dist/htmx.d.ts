@@ -19,8 +19,9 @@ export function addClass(elt: Element, clazz: string, delay?: number): void;
  * @param verb 'GET', 'POST', etc.
  * @param path the URL path to make the AJAX
  * @param element the element to target (defaults to the **body**)
+ * @returns Promise that resolves immediately if no request is sent, or when the request is complete
  */
-export function ajax(verb: string, path: string, element: Element): void;
+export function ajax(verb: string, path: string, element: Element): Promise<void>;
 
 /**
  * Issues an htmx-style AJAX request
@@ -30,8 +31,9 @@ export function ajax(verb: string, path: string, element: Element): void;
  * @param verb 'GET', 'POST', etc.
  * @param path the URL path to make the AJAX
  * @param selector a selector for the target
+ * @returns Promise that resolves immediately if no request is sent, or when the request is complete
  */
-export function ajax(verb: string, path: string, selector: string): void;
+export function ajax(verb: string, path: string, selector: string): Promise<void>;
 
 /**
  * Issues an htmx-style AJAX request
@@ -41,12 +43,13 @@ export function ajax(verb: string, path: string, selector: string): void;
  * @param verb 'GET', 'POST', etc.
  * @param path the URL path to make the AJAX
  * @param context a context object that contains any of the following
+ * @returns Promise that resolves immediately if no request is sent, or when the request is complete
  */
 export function ajax(
     verb: string,
     path: string,
-    context: Partial<{ source: any; event: any; handler: any; target: any; swap: any; values: any; headers: any }>
-): void;
+    context: Partial<{ source: any; event: any; handler: any; target: any; errorTarget:any; swap: any; errorSwap: any; values: any; headers: any; select: any }>
+): Promise<void>;
 
 /**
  * Finds the closest matching element in the given elements parentage, inclusive of the element
@@ -340,7 +343,7 @@ export interface HtmxConfig {
     requestClass?: "htmx-request" | string;
     /**
      * The class to temporarily place on elements that htmx has added to the DOM.
-     * @default "htmx-added" 
+     * @default "htmx-added"
      */
     addedClass?: "htmx-added" | string;
     /**
@@ -382,6 +385,89 @@ export interface HtmxConfig {
     disableSelector?: "[hx-disable], [data-hx-disable]" | string;
     /** @default "smooth" */
     scrollBehavior?: "smooth" | "auto";
+    /**
+     * If set to false, disables the interpretation of script tags.
+     * @default true
+     */
+    allowScriptTags?: boolean;
+    /**
+     * If set to true, disables htmx-based requests to non-origin hosts.
+     * @default false
+     */
+    selfRequestsOnly?: boolean;
+    /**
+     * Whether or not the target of a boosted element is scrolled into the viewport.
+     * @default true
+     */
+    scrollIntoViewOnBoost?: boolean;
+    /**
+     * If set, the nonce will be added to inline scripts.
+     * @default ''
+     */
+    inlineScriptNonce?: string;
+    /**
+     * The type of binary data being received over the WebSocket connection
+     * @default 'blob'
+     */
+    wsBinaryType?: 'blob' | 'arraybuffer'; 
+    /**
+     * If set to true htmx will include a cache-busting parameter in GET requests to avoid caching partial responses by the browser
+     * @default false 
+     */
+    getCacheBusterParam?: boolean;
+    /**
+     * If set to true, htmx will use the View Transition API when swapping in new content.
+     * @default false 
+     */
+    globalViewTransitions?: boolean;
+    /**
+     * htmx will format requests with these methods by encoding their parameters in the URL, not the request body
+     * @default ["get"] 
+     */
+    methodsThatUseUrlParams?: ('get' | 'head' | 'post' | 'put' | 'delete' | 'connect' | 'options' | 'trace' | 'patch' )[];
+    /**
+     * If set to true htmx will not update the title of the document when a title tag is found in new content
+     * @default false 
+     */
+    ignoreTitle:? boolean;
+    /**
+     * The cache to store evaluated trigger specifications into.
+     * You may define a simple object to use a never-clearing cache, or implement your own system using a [proxy object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Proxy)
+     * @default null
+     */
+    triggerSpecsCache?: {[trigger: string]: HtmxTriggerSpecification[]};
+    /**
+     * The default swap style to use if [`hx-error-swap`](https://htmx.org/attributes/hx-error-swap.md) is omitted
+     * @default "none"
+     */
+    defaultErrorSwapStyle?: string;
+    /**
+     * The default target strategy to use if [`hx-error-target`](https://htmx.org/attributes/hx-error-target.md) is omitted
+     * @default "mirror"
+     */
+    defaultErrorTarget?: string;
+    /**
+     * The [HTTP error codes](https://developer.mozilla.org/docs/Web/HTTP/Status) to enable errors swapping for (all other error codes will be ignored).
+     * If empty, all error codes will be swapped
+     * @default []
+     */
+    httpErrorCodesToSwap?: string[];
+    /**
+     * Whether to enable the read/write layout queues system to avoid layout thrashing, delaying layout reads and writes across animation frames
+     * @default true
+     */
+    layoutQueuesEnabled?: boolean;
+    /**
+     * Whether to throttle elements clean up by chunks of 4ms of work across animation frames
+     * @default false
+     */
+    cleanUpThrottlingEnabled?: boolean;
+    /**
+     * A key-value pair object of htmx events to disable, i.e. to avoid firing.
+     * For ex setting it to `{ "htmx:afterRequest": true }` would result in no `htmx:afterRequest` event being fired at all
+     * @default {}
+     */
+    disabledEvents?: object;
 }
 
 /**
