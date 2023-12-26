@@ -3382,9 +3382,6 @@ return (function () {
 
             var headers = getHeaders(elt, target, promptResponse);
 
-            if (etc.headers) {
-                headers = mergeObjects(headers, etc.headers);
-            }
             var results = getInputValues(elt, verb);
             var errors = results.errors;
             var rawParameters = mergeObjects(results.values, htmx.globalParams);
@@ -3397,6 +3394,9 @@ return (function () {
 
             if (verb !== 'get' && !usesFormData(elt, filteredParameters)) {
                 headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            }
+            if (etc.headers) {
+                headers = mergeObjects(headers, etc.headers);
             }
 
             if (htmx.config.getCacheBusterParam && verb === 'get') {
