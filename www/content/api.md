@@ -139,6 +139,7 @@ Note that using a [meta tag](@/docs.md#config) is the preferred mechanism for se
 * `defaultErrorTarget:'mirror'` - string: the default target strategy to use if [`hx-error-target`](@/attributes/hx-error-target.md) is omitted
 * `httpErrorCodesToSwap:[]` - array of numbers: the [HTTP error codes](https://developer.mozilla.org/docs/Web/HTTP/Status) to enable errors swapping for (all other error codes will be ignored). If empty, all error codes will be swapped
 * `layoutQueuesEnabled:true` - boolean: whether to enable the read/write layout queues system to avoid layout thrashing, delaying layout reads and writes across animation frames
+* `disabledEvents:{}` - object: a key-value pair object of htmx events to disable, i.e. to avoid firing. For ex setting it to `{ "htmx:afterRequest": true }` would result in no `htmx:afterRequest` event being fired at all
 
 ##### Example
 

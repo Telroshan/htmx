@@ -689,4 +689,28 @@ describe("Core htmx Events", function() {
         }
     });
 
+    it("disabledEvents correctly ignores specified events", function () {
+        var oldValue = htmx.config.disabledEvents
+        htmx.config.disabledEvents = {"htmx:beforeProcessNode": true, "htmx:afterRequest": true}
+        var callsCount = 0
+        var handler = htmx.on("htmx:afterRequest", function () {
+            callsCount++
+        });
+        try {
+            this.server.respondWith("POST", "/test", function (xhr) {
+                xhr.respond(200, {}, "");
+            });
+            var div = make("<button hx-post='/test'>Foo</button>");
+            div.click();
+            this.server.respond();
+            should.equal(callsCount, 0);
+            htmx.config.disabledEvents["htmx:afterRequest"] = false
+            div.click();
+            this.server.respond();
+            should.equal(callsCount, 1);
+        } finally {
+            htmx.off("htmx:afterRequest", handler);
+        }
+        htmx.config.disabledEvents = oldValue
+    })
 });

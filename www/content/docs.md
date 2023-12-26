@@ -1663,6 +1663,7 @@ listed below:
 | `htmx.config.defaultErrorTarget`      | defaults to `mirror`, htmx will swap content on error responses by default using the specified [swap target](@/attributes/hx-error-target.md)                              |
 | `htmx.config.httpErrorCodesToSwap`    | defaults to `[]`, if this array of [HTTP status codes](https://developer.mozilla.org/docs/Web/HTTP/Status) is not empty, htmx will use it as a whitelist and won't swap error responses with an unlisted status code           |
 | `htmx.config.layoutQueuesEnabled`     | defaults to `true`, whether to enable the read/write layout queues system to avoid layout thrashing, delaying layout reads and writes across animation frames              |
+| `htmx.config.disabledEvents`          | defaults to `{}`, a key-value pair object of htmx events to disable, i.e. to avoid firing. For ex setting it to `{ "htmx:afterRequest": true }` would result in no `htmx:afterRequest` event being fired at all |
 
 </div>
 

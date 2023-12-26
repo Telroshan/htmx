@@ -457,6 +457,12 @@ export interface HtmxConfig {
      * @default true
      */
     layoutQueuesEnabled?: boolean;
+    /**
+     * A key-value pair object of htmx events to disable, i.e. to avoid firing.
+     * For ex setting it to `{ "htmx:afterRequest": true }` would result in no `htmx:afterRequest` event being fired at all
+     * @default {}
+     */
+    disabledEvents?: object;
 }
 
 /**

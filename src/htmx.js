@@ -81,6 +81,7 @@ return (function () {
                 defaultErrorTarget: "mirror",
                 httpErrorCodesToSwap: [],
                 layoutQueuesEnabled: true,
+                disabledEvents: {},
             },
             eventSources: [],
             parseInterval:parseInterval,
@@ -1108,6 +1109,7 @@ return (function () {
             var start = Date.now()
             while (candidates.length > 0) {
                 var target = candidates[0]
+                triggerEvent(target, "htmx:beforeCleanupElement")
                 deInitNode(target)
                 if (target.children) { // IE
                     forEach(target.children, function(child) {
@@ -2273,6 +2275,8 @@ return (function () {
 
                 processHxOn(elt);
 
+                triggerEvent(elt, "htmx:beforeProcessNode")
+
                 if (elt.value) {
                     nodeData.lastValue = elt.value;
                 }
@@ -2307,6 +2311,8 @@ return (function () {
                 if (wsInfo) {
                     processWebSocketInfo(elt, nodeData, wsInfo);
                 }
+
+                triggerEvent(elt, "htmx:afterProcessNode");
             }
         }
 
@@ -2386,6 +2392,9 @@ return (function () {
         }
 
         function triggerEvent(elt, eventName, detail) {
+            if (htmx.config.disabledEvents[eventName]) {
+                return true
+            }
             elt = resolveTarget(elt);
             if (detail == null) {
                 detail = {};
