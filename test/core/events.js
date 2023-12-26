@@ -131,7 +131,7 @@ describe("Core htmx Events", function() {
                 submitterId = xhr.requestHeaders['X-Submitter-Id']
                 xhr.respond(200, {}, "");
             });
-            make('<div hx-target="this" hx-boost="true"><form action="/test" method="post"><button type="submit" id="b1">Submit</button><button type="submit" id="b2">Submit</button></form></div>');
+            make('<div hx-target="this"><form hx-post="/test"><button type="submit" id="b1">Submit</button><button type="submit" id="b2">Submit</button></form></div>');
             var btn = byId('b1');
             btn.click();
             this.server.respond();
