@@ -1993,14 +1993,10 @@ return (function () {
             var nodeData = getInternalData(elt);
             var newHash = attributeHash(elt)
             if (nodeData.initHash !== newHash) {
-                var oldHash = nodeData.initHash
-                nodeData.initHash = newHash;
-
                 // clean up any previously processed info
-                // don't clean up a node that had never been initialized
-                if (oldHash) {
-                    deInitNode(elt);
-                }
+                deInitNode(elt)
+
+                nodeData.initHash = newHash
 
                 triggerEvent(elt, "htmx:beforeProcessNode")
 
