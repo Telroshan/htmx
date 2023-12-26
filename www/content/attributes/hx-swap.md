@@ -3,11 +3,12 @@ title = "hx-swap"
 +++
 
 The `hx-swap` attribute allows you to specify how the response will be swapped in relative to the
-[target](@/attributes/hx-target.md) of an AJAX request.
+[target](@/attributes/hx-target.md) of an AJAX request. If you do not specify the option, the default is
+`htmx.config.defaultSwapStyle` (`innerHTML`).
 
 The possible values of this attribute are:
 
-* `innerHTML` - The default, replace the inner html of the target element
+* `innerHTML` - Replace the inner html of the target element
 * `outerHTML` - Replace the entire target element with the response
 * `beforebegin` - Insert the response before the target element
 * `afterbegin` - Insert the response before the first child of the target element
@@ -109,6 +110,15 @@ You may also use `window:top` and `window:bottom` to scroll to the top and botto
        hx-swap="innerHTML show:window:top">
     Get Some Content
   </div>
+```
+
+For boosted links and forms the default behaviour is `show:top`. You can disable it globally with
+[htmx.config.scrollIntoViewOnBoost](@/api.md#config) or you can use `hx-swap="show:none"` on an element basis.
+
+```html
+<form action="/example" hx-swap="show:none">
+  ...
+</form>
 ```
 
 #### Focus scroll

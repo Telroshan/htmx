@@ -15,19 +15,23 @@ page_template = "essay.html"
 * [Rescuing REST From the API Winter](https://intercoolerjs.org/2016/01/18/rescuing-rest.html)
 * [Taking HTML Seriously](https://intercoolerjs.org/2020/01/14/taking-html-seriously)
 * [REST Copypasta](@/essays/rest-copypasta.md)
+* [The #ViewSource Affordance](@/essays/right-click-view-source.md)
 
 ### Why Hypermedia? Why Multi-Page Applications?
 * [Hypermedia On Whatever you'd Like (HOWL)](@/essays/hypermedia-on-whatever-youd-like.md)
 * [A Response To "Have SPAs Ruined The Web"](@/essays/a-response-to-rich-harris.md)
 * [When To Use Hypermedia?](@/essays/when-to-use-hypermedia.md)
 * [The API Churn/Security Trade-off](https://intercoolerjs.org/2016/02/17/api-churn-vs-security.html)
+* [Does Hypermedia Scale?](@/essays/does-hypermedia-scale.md)
 * [SPA Alternative](@/essays/spa-alternative.md)
 
 ### Building Hypermedia Applications
 * [A Real World React to htmx Port](@/essays/a-real-world-react-to-htmx-port.md)
+* [Another Real World React to htmx Port](@/essays/another-real-world-react-to-htmx-port.md)
 * [Hypermedia-Driven Applications (HDAs)](@/essays/hypermedia-driven-applications.md)
 * [Hypermedia Friendly Scripting](@/essays/hypermedia-friendly-scripting.md)
 * [10 Tips For Building SSR/HDA applications](@/essays/10-tips-for-SSR-HDA-apps.md)
+* [Why I Tend Not To Use Content Negotiation](@/essays/why-tend-not-to-use-content-negotiation.md)
 * [Template Fragments](@/essays/template-fragments.md)
 * [View Transitions](@/essays/view-transitions.md)
 

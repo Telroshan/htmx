@@ -14,6 +14,7 @@
 <body style="padding:20px;font-family: sans-serif">
 
 <h1 style="margin-top: 40px">htmx.js test suite</h1>
+<p id="version-number">Version:&nbsp;</p>
 
 <h2>Scratch Page</h2>
 <ul>
@@ -40,6 +41,9 @@
   if (navigator.webdriver) {
     htmx.logAll = function () { }
   }
+
+  // Add the version number to the top
+  document.getElementById('version-number').innerText += htmx.version
 </script>
 
 <script class="mocha-init">
@@ -54,6 +58,7 @@
 <script src="core/internals.js"></script>
 <script src="core/api.js"></script>
 <script src="core/ajax.js"></script>
+<script src="core/extensions.js"></script>
 <script src="core/verbs.js"></script>
 <script src="core/parameters.js"></script>
 <script src="core/headers.js"></script>
@@ -65,6 +70,7 @@
 
 <!-- attribute tests -->
 <script src="attributes/hx-boost.js"></script>
+<script src="attributes/hx-confirm.js"></script>
 <script src="attributes/hx-delete.js"></script>
 <script src="attributes/hx-ext.js"></script>
 <script src="attributes/hx-get.js"></script>
@@ -72,6 +78,7 @@
 <script src="attributes/hx-history.js"></script>
 <script src="attributes/hx-include.js"></script>
 <script src="attributes/hx-indicator.js"></script>
+<script src="attributes/hx-disabled-elt.js"></script>
 <script src="attributes/hx-disinherit.js"></script>
 <script src="attributes/hx-on.js"></script>
 <script src="attributes/hx-on-wildcard.js"></script>
@@ -151,8 +158,14 @@
 <script src="../src/ext/ws.js"></script>
 <script src="ext/ws.js"></script>
 
+<script src="../src/ext/sse.js"></script>
+<script src="ext/sse.js"></script>
+
 <script src="../src/ext/response-targets.js"></script>
 <script src="ext/response-targets.js"></script>
+
+<script src="../src/ext/path-params.js"></script>
+<script src="ext/path-params.js"></script>
 
 <!-- events last so they don't screw up other tests -->
 <script src="core/events.js"></script>
@@ -160,11 +173,14 @@
 <div id="mocha"></div>
 
 <script class="mocha-exec">
-    mocha.run();
+    document.addEventListener("DOMContentLoaded", function () {
+        mocha.setup({globals: ['$0', '$1', '$2', '$3', '$4', 'performance', 'requestAnimationFrame', 'cancelAnimationFrame', 'confirm']}); <!-- IE11 -->
+        mocha.run();
+    })
 </script>
 <em>Work Area</em>
 <hr/>
-<div id="work-area" hx-history-elt hx-ext="sse">
+<div id="work-area" hx-history-elt>
 </div>
 </body>
 </html>

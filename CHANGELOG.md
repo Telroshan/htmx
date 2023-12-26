@@ -1,6 +1,54 @@
 # Changelog
 
-## [1.9.6] - ???
+## [1.9.10] - 2023-12-21
+
+* `hx-on*` attributes now support the form `hx-on-`, with a trailing dash, to better support template systems (such as EJS)
+  that do not like double colons in HTML attributes.
+* Added an `htmx.config.triggerSpecsCache` configuration property that can be set to an object to cache the trigger spec parsing
+* Added a `path-params.js` extension for populating request paths with variable values
+* Many smaller bug fixes & improvements
+
+## [1.9.9] - 2023-11-21
+
+* Allow CSS selectors with whitespace in attributes like `hx-target` by using parens or curly-braces
+* Properly allow users to override the `Content-Type` request header
+* Added the `select` option to `htmx.ajax()`
+* Fixed a race condition in readystate detection that lead to htmx not being initialized in some scenarios with 3rd
+  party script loaders
+* Fixed a bug that caused relative resources to resolve against the wrong base URL when a new URL is pushed
+* Fixed a UI issue that could cause indicators to briefly flash
+
+## [1.9.8] - 2023-11-06
+
+* Fixed a few npm & build related issues
+
+## [1.9.7] - 2023-11-03
+
+* Fixed a bug where a button associated with a form that is swapped out of the DOM caused errors
+* The `hx-target-error` attribute was added to the `response-targets` extension, allowing you to capture all 400 & 500
+  responses with a single attribute
+* `hx-on` now properly supports multiple listeners
+* The `hx-confirm` prompt is now passed into custom confirmation handlers
+* `next` and `previous` are now valid _extended CSS_ symbols in htmx
+* The `htmx:beforeHistoryUpdate` event was added
+* Properly ignore the `dialog` formmethod on buttons when resolving the HTTP method to use
+* Added a `htmx.config.scrollIntoViewOnBoost` option that may be set to `false` to disable scrolling the top of the
+  body into view for boosted elements
+
+## [1.9.6] - 2023-09-22
+
+* IE support has been restored (thank you @telroshan!)
+* Introduced the `hx-disabled-elt` attribute to allow specifing elements to disable during a request
+* You can now explicitly decide to ignore `title` tags found in new content via the `ignoreTitle` option in `hx-swap` and the `htmx.config.ignoreTitle` configuration variable.
+* `hx-swap` modifiers may be used without explicitly specifying the swap mechanism
+* Arrays are now supported in the `client-side-templates` extension
+* XSLT support in the `client-side-templates` extension
+* Support `preventDefault()` in extension event handling
+* Allow the `HX-Refresh` header to apply even after an `HX-Redirect` has occurred
+* the `formaction` and `formmethod` attributes on buttons are now properly respected
+* `hx-on` can now handle events with dots in their name
+* `htmx.ajax()` now always returns a Promise
+* Handle leading `style` tag parsing more effectively
 
 ## [1.9.5] - 2023-08-25
 

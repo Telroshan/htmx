@@ -38,6 +38,7 @@ custom_classes = "wide-content"
 * [events & logging](#events)
 * [debugging](#debugging)
 * [scripting](#scripting)
+  * [hx-on attribute](#hx-on)
   * [hyperscript](#hyperscript)
 * [3rd party integration](#3rd-party)
 * [caching](#caching)
@@ -95,7 +96,7 @@ within the [original web programming model](https://www.ics.uci.edu/~fielding/pu
 using [Hypertext As The Engine Of Application State](https://en.wikipedia.org/wiki/HATEOAS)
 without even needing to really understand that concept.
 
-It's worth mentioning that, if you prefer, you can use the `data-` prefix when using htmx:
+It's worth mentioning that, if you prefer, you can use the [`data-`](https://html.spec.whatwg.org/multipage/dom.html#attr-data-*) prefix when using htmx:
 
 ```html
 <a data-hx-post="/click">Click Me!</a>
@@ -114,7 +115,7 @@ The fastest way to get going with htmx is to load it via a CDN. You can simply a
 and get going:
 
 ```html
-<script src="https://unpkg.com/htmx.org@1.9.6" integrity="sha384-TODO" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
 ```
 
 While the CDN approach is extremely simple, you may want to consider [not using CDNs in production](https://blog.wesleyac.com/posts/why-not-javascript-cdn).
@@ -345,10 +346,10 @@ you can create your own CSS transition like so:
 .htmx-indicator{
     display:none;
 }
-.htmx-request .my-indicator{
+.htmx-request .htmx-indicator{
     display:inline;
 }
-.htmx-request.my-indicator{
+.htmx-request.htmx-indicator{
     display:inline;
 }
 ```
@@ -367,6 +368,9 @@ attribute with a CSS selector to do so:
 
 Here we call out the indicator explicitly by id.  Note that we could have placed the class on the parent `div` as well
 and had the same effect.
+
+You can also add the [the `disabled` attribute](https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/disabled) to
+elements for the duration of a request by using the [hx-disabled-elt](@/attributes/hx-disabled-elt.md) attribute.
 
 ### Targets
 
@@ -427,17 +431,17 @@ with any of the following values:
 #### Morph Swaps {#morphing}
 
 In addition to the standard swap mechanisms above, htmx also supports _morphing_ swaps, via extensions.  Morphing swaps
-attempt to _merge_ new content into the existing DOM, rather than simply replacing it, and often do a better job
-preserving things like focus, video state, etc. by preserving nodes in-place during the swap operation.
+attempt to _merge_ new content into the existing DOM, rather than simply replacing it.  They often do a better job
+preserving things like focus, video state, etc. by mutating existing nodes in-place during the swap operation, at the
+cost of more CPU.
 
 The following extensions are available for morph-style swaps:
 
+* [Idiomorph](https://github.com/bigskysoftware/idiomorph#htmx) - A morphing algorithm created by the htmx developers.
 * [Morphdom Swap](@/extensions/morphdom-swap.md) - Based on the [morphdom](https://github.com/patrick-steele-idem/morphdom),
   the original DOM morphing library.
 * [Alpine-morph](@/extensions/alpine-morph.md) - Based on the [alpine morph](https://alpinejs.dev/plugins/morph) plugin, plays
   well with alpine.js
-* [Idiomorph](https://github.com/bigskysoftware/idiomorph#htmx) - A newer morphing algorithm developed by us, the creators
-  of htmx.  Idiomorph will be available out of the box in htmx 2.0.
 
 #### View Transitions {#view-transitions}
 
@@ -474,7 +478,7 @@ The modifiers available on `hx-swap` are:
 | `transition`  | `true` or `false`, whether to use the view transition API for this swap                                  |
 | `swap`        | The swap delay to use (e.g. `100ms`) between when old content is cleared and the new content is inserted |
 | `settle`      | The settle delay to use (e.g. `100ms`) between when new content is inserted and when it is settled       |
-| `ignoreTitle` | If set to `true`, any title found in the new content will be ignored and not update the docuemnt title   |
+| `ignoreTitle` | If set to `true`, any title found in the new content will be ignored and not update the document title   |
 | `scroll`      | `top` or `bottom`, will scroll the target element to its top or bottom                                   |
 | `show`        | `top` or `bottom`, will scroll the target elements top or bottom into view                               |
 
@@ -596,8 +600,6 @@ In this response, `div#message` would be swapped directly into the matching DOM 
 would be swapped into the target in the normal manner.
 
 You can use this technique to "piggy-back" updates on other requests.
-
-Note that out of band elements must be in the top level of the response, and not children of the top level elements.
 
 #### Selecting Content To Swap
 
@@ -787,7 +789,7 @@ htmx has experimental support for declarative use of both
 [WebSockets](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_client_applications)
 and  [Server Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events).
 
-<div style="border: 1px solid whitesmoke; background-color: #d0dbee; padding: 8px; border-radius: 8px">
+<div style="border: 1px solid whitesmoke; background-color: #e4f0ff; padding: 8px; border-radius: 8px">
 
 **Note:** In htmx 2.0, these features will be migrated to extensions.  These new extensions are already available in
 htmx 1.7+ and, if you are writing new code, you are encouraged to use the extensions instead.  All new feature work for
@@ -825,7 +827,7 @@ server and the browser than websockets.
 If you want an element to respond to a Server Sent Event via htmx, you need to do two things:
 
 1. Define an SSE source.  To do this, add a [hx-sse](@/attributes/hx-sse.md) attribute on a parent element with
-a `connect <url>` declaration that specifies the URL from which Server Sent Events will be received.
+a `connect:<url>` declaration that specifies the URL from which Server Sent Events will be received.
 
 2. Define elements that are descendents of this element that are triggered by server sent events using the
 `hx-trigger="sse:<event_name>"` syntax
@@ -910,25 +912,32 @@ on the client side.
 
 htmx includes a number of useful headers in requests:
 
-| Header | Description
-|--------|--------------
-| `HX-Request` | will be set to "true"
-| `HX-Trigger` | will be set to the id of the element that triggered the request
-| `HX-Trigger-Name` | will be set to the name of the element that triggered the request
-| `HX-Target` | will be set to the id of the target element
-| `HX-Prompt` | will be set to the value entered by the user when prompted via [hx-prompt](@/attributes/hx-prompt.md)
+| Header | Description |
+|--------|-------------|
+| `HX-Boosted` | indicates that the request is via an element using [hx-boost](@/attributes/hx-boost.md)
+| `HX-Current-URL` | the current URL of the browser
+| `HX-History-Restore-Request` | "true" if the request is for history restoration after a miss in the local history cache
+| `HX-Prompt` | the user response to an [hx-prompt](@/attributes/hx-prompt.md)
+| `HX-Request` | always "true"
+| `HX-Target` | the `id` of the target element if it exists
+| `HX-Trigger-Name` | the `name` of the triggered element if it exists
+| `HX-Trigger` | the `id` of the triggered element if it exists
 
 ### Response Headers
 
 htmx supports some htmx-specific response headers:
 
-* `HX-Push` - pushes a new URL into the browser’s address bar
-* `HX-Redirect` - triggers a client-side redirect to a new location
-* `HX-Location` - triggers a client-side redirect to a new location that acts as a swap
-* `HX-Refresh` - if set to "true" the client side will do a full refresh of the page
-* `HX-Trigger` - triggers client side events
-* `HX-Trigger-After-Swap` - triggers client side events after the swap step
-* `HX-Trigger-After-Settle` - triggers client side events after the settle step
+* [`HX-Location`](@/headers/hx-location.md) - allows you to do a client-side redirect that does not do a full page reload
+* [`HX-Push-Url`](@/headers/hx-push-url.md) - pushes a new url into the history stack
+* `HX-Redirect` - can be used to do a client-side redirect to a new location
+* `HX-Refresh` - if set to "true" the client-side will do a full refresh of the page
+* [`HX-Replace-Url`](@/headers/hx-replace-url.md) - replaces the current URL in the location bar
+* `HX-Reswap` - allows you to specify how the response will be swapped. See [hx-swap](@/attributes/hx-swap.md) for possible values
+* `HX-Retarget` - a CSS selector that updates the target of the content update to a different element on the page
+* `HX-Reselect` - a CSS selector that allows you to choose which part of the response is used to be swapped in. Overrides an existing [`hx-select`](@/attributes/hx-select.md) on the triggering element
+* [`HX-Trigger`](@/headers/hx-trigger.md) - allows you to trigger client-side events
+* [`HX-Trigger-After-Settle`](@/headers/hx-trigger.md) - allows you to trigger client-side events after the settle step
+* [`HX-Trigger-After-Swap`](@/headers/hx-trigger.md) - allows you to trigger client-side events after the swap step
 
 For more on the `HX-Trigger` headers, see [`HX-Trigger` Response Headers](@/headers/hx-trigger.md).
 
@@ -980,12 +989,15 @@ Here is an example of an input that uses the `htmx:validation:validate` event to
 `foo`, using hyperscript:
 
 ```html
-<form hx-post="/test">
+<form id="foo-form" hx-post="/test">
     <input _="on htmx:validation:validate
                 if my.value != 'foo'
                     call me.setCustomValidity('Please enter the value foo')
-                else
-                    call me.setCustomValidity('')"
+                    call #foo-form.reportValidity()
+                end
+                
+                on keyup
+                call me.setCustomValidity('')"
         name="example"
     >
 </form>
@@ -1028,6 +1040,7 @@ Htmx includes some extensions that are tested against the htmx code base.  Here 
 | [`path-deps`](@/extensions/path-deps.md) | an extension for expressing path-based dependencies [similar to intercoolerjs](http://intercoolerjs.org/docs.html#dependencies)
 | [`class-tools`](@/extensions/class-tools.md) | an extension for manipulating timed addition and removal of classes on HTML elements
 | [`multi-swap`](@/extensions/multi-swap.md) | allows to swap multiple elements with different swap methods
+| [`response-targets`](@/extensions/response-targets.md) | allows to swap elements for responses with HTTP codes beyond `200`
 
 See the [extensions page](@/extensions/_index.md#included) for a complete list.
 
@@ -1248,7 +1261,7 @@ Scripting solutions that pair well with htmx include:
   team that created htmx.  It is designed to embed well in HTML and both respond to and create events, and pairs very well
   with htmx.
 
-### <a name="hx-on"></a>[The `hx-on` Attribute](#hyperscript)
+### <a name="hx-on"></a>[The `hx-on*` Attributes](#hx-on)
 
 HTML allows the embedding of inline scripts via the [`onevent` properties](https://developer.mozilla.org/en-US/docs/Web/Events/Event_handlers#using_onevent_properties),
 such as `onClick`:
@@ -1261,34 +1274,44 @@ such as `onClick`:
 
 This feature allows scripting logic to be co-located with the HTML elements the logic applies to, giving good
 [Locality of Behaviour (LoB)](/essays/locality-of-behaviour).  Unfortunately, HTML only allows `on*` attributes for a fixed
-number of specific DOM events (e.g. `onclick`) and doesn't offer a way to respond generally to events in this embedded
-manner.
+number of [specific DOM events](https://www.w3schools.com/tags/ref_eventattributes.asp) (e.g. `onclick`) and 
+doesn't provide a generalized mechanism for responding to arbitrary events on elements.
 
-In order to address this shortcoming, htmx offers the [`hx-on`](/attributes/hx-on) attribute.  This attribute allows
-you to respond to any event in a manner that preserves the LoB of the `on*` properties:
+In order to address this shortcoming, htmx offers [`hx-on*`](/attributes/hx-on) attributes.  These attributes allow
+you to respond to any event in a manner that preserves the LoB of the standard `on*` properties.
+
+If we wanted to respond to the `click` event using an `hx-on` attribute, we would write this:
 
 ```html
-<button hx-on="click: alert('You clicked me!')">
+<button hx-on:click="alert('You clicked me!')">
     Click Me!
 </button>
 ```
 
-For a `click` event, we would recommend sticking with the standard `onclick` attribute.  However, consider an htmx-powered
-button that wishes to add an attribute to a request using the `htmx:configRequest` event.  This would not be possible
-with an `on*` property, but can be done using the `hx-on` attribute:
+So, the string `hx-on`, followed by a colon (or a dahs), then by the name of the event.
+
+For a `click` event, of course, we would recommend sticking with the standard `onclick` attribute.  However, consider an 
+htmx-powered button that wishes to add a parameter to a request using the `htmx:config-request` event.  This would not 
+be possible using a standard `on*` property, but it can be done using the `hx-on:htmx:config-request` attribute:
 
 ```html
 <button hx-post="/example"
-        hx-on="htmx:configRequest: event.detail.parameters.example = 'Hello Scripting!'">
+        hx-on:htmx:config-request=": event.detail.parameters.example = 'Hello Scripting!'">
     Post Me!
 </button>
 ```
 
 Here the `example` parameter is added to the `POST` request before it is issued, with the value 'Hello Scripting!'.
 
-The `hx-on` attribute is a very simple mechanism for generalized embedded scripting.  It is _not_ a replacement for more
+The `hx-on*` attributes are a very simple mechanism for generalized embedded scripting.  It is _not_ a replacement for more
 fully developed front-end scripting solutions such as AlpineJS or hyperscript.  It can, however, augment a VanillaJS-based
 approach to scripting in your htmx-powered application.
+
+Note that HTML attributes are *case insensitive*.  This means that, unfortunately, events that rely on capitalization/
+camel casing, cannot be responded to.  If you need to support camel case events we recommend using a more fully
+functional scripting solution such as AlpineJS or hyperscript.  htmx dispatches all its events in both camelCase and in
+kebab-case for this very reason.
+
 
 ### hyperscript
 
@@ -1635,6 +1658,7 @@ listed below:
 | `htmx.config.methodsThatUseUrlParams` | defaults to `["get"]`, htmx will format requests with this method by encoding their parameters in the URL, not the request body                                            |
 | `htmx.config.selfRequestsOnly`        | defaults to `false`, if set to `true` will only allow AJAX requests to the same domain as the current document                                                             |
 | `htmx.config.ignoreTitle`             | defaults to `false`, if set to `true` htmx will not update the title of the document when a `title` tag is found in new content                                            |
+| `htmx.config.triggerSpecsCache`       | defaults to `null`, the cache to store evaluated trigger specifications into, improving parsing performance at the cost of more memory usage. You may define a simple object to use a never-clearing cache, or implement your own system using a [proxy object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Proxy) |
 
 </div>
 

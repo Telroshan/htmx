@@ -64,9 +64,8 @@ See the individual extension documentation for more details.
 | [`ajax-header`](@/extensions/ajax-header.md)                     | includes the commonly-used `X-Requested-With` header that identifies ajax requests in many backend frameworks
 | [`alpine-morph`](@/extensions/alpine-morph.md)                   | an extension for using the [Alpine.js morph](https://alpinejs.dev/plugins/morph) plugin as the swapping mechanism in htmx.
 | [`class-tools`](@/extensions/class-tools.md)                     | an extension for manipulating timed addition and removal of classes on HTML elements
-| [`client-side-templates`](@/extensions/client-side-templates.md) | support for client side template processing of JSON responses
+| [`client-side-templates`](@/extensions/client-side-templates.md) | support for client side template processing of JSON/XML responses
 | [`debug`](@/extensions/debug.md)                                 | an extension for debugging of a particular element using htmx
-| [`disable-element`](@/extensions/disable-element.md)             | an extension for disabling an element during an htmx request
 | [`event-header`](@/extensions/event-header.md)                   | includes a JSON serialized version of the triggering event, if any
 | [`head-support`](@/extensions/head-support.md)                   | support for merging the `head` tag from responses into the existing documents `head`
 | [`include-vals`](@/extensions/include-vals.md)                   | allows you to include additional values in a request
@@ -83,6 +82,7 @@ See the individual extension documentation for more details.
 | [`restored`](@/extensions/restored.md)                           | allows you to trigger events when the back button has been pressed
 | [`server-sent-events`](@/extensions/server-sent-events.md)       | uni-directional server push messaging via [EventSource](https://developer.mozilla.org/en-US/docs/Web/API/EventSource)
 | [`web-sockets`](@/extensions/web-sockets.md)                     | bi-directional connection to WebSocket servers
+| [`path-params`](@/extensions/path-params.md)                     | allows to use parameters for path variables instead of sending them in query or body
 
 </div>
 
