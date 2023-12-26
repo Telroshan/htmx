@@ -1957,47 +1957,11 @@ return (function () {
             });
         }
 
-        function shouldProcessHxOn(elt) {
-            var attributes = elt.attributes
-            for (var j = 0; j < attributes.length; j++) {
-                var attrName = attributes[j].name
-                if (startsWith(attrName, "hx-on:") || startsWith(attrName, "data-hx-on:") ||
-                    startsWith(attrName, "hx-on-") || startsWith(attrName, "data-hx-on-")) {
-                    return true
-                }
-            }
-            return false
-        }
-
-        function findHxOnWildcardElements(elt) {
-            var node = null
-            var elements = []
-
-            if (shouldProcessHxOn(elt)) {
-                elements.push(elt)
-            }
-
-            if (document.evaluate) {
-                var iter = document.evaluate('.//*[@*[ starts-with(name(), "hx-on:") or starts-with(name(), "data-hx-on:") or' +
-                                                                           ' starts-with(name(), "hx-on-") or starts-with(name(), "data-hx-on-") ]]', elt)
-                while (node = iter.iterateNext()) elements.push(node)
-            } else {
-                var allElements = elt.getElementsByTagName("*")
-                for (var i = 0; i < allElements.length; i++) {
-                    if (shouldProcessHxOn(allElements[i])) {
-                        elements.push(allElements[i])
-                    }
-                }
-            }
-
-            return elements
-        }
-
         function findElementsToProcess(elt) {
             if (elt.querySelectorAll) {
                 var boostedSelector = ", [hx-boost] a, [data-hx-boost] a, a[hx-boost], a[data-hx-boost]";
                 var results = elt.querySelectorAll(VERB_SELECTOR + boostedSelector + ", form, [type='submit'], [hx-sse], [data-hx-sse], " +
-                    " [hx-ext], [data-hx-ext], [hx-trigger], [data-hx-trigger], [hx-on], [data-hx-on]");
+                    " [hx-ext], [data-hx-ext], [hx-trigger], [data-hx-trigger]");
                 return results;
             } else {
                 return [];
@@ -2039,91 +2003,6 @@ return (function () {
             elt.addEventListener('focusout', maybeUnsetLastButtonClicked)
         }
 
-        function countCurlies(line) {
-            var tokens = tokenizeString(line);
-            var netCurlies = 0;
-            for (var i = 0; i < tokens.length; i++) {
-                const token = tokens[i];
-                if (token === "{") {
-                    netCurlies++;
-                } else if (token === "}") {
-                    netCurlies--;
-                }
-            }
-            return netCurlies;
-        }
-
-        function addHxOnEventHandler(elt, eventName, code) {
-            var nodeData = getInternalData(elt);
-            if (!Array.isArray(nodeData.onHandlers)) {
-                nodeData.onHandlers = [];
-            }
-            var func;
-            var listener = function (e) {
-                return maybeEval(elt, function() {
-                    if (!func) {
-                        func = new Function("event", code);
-                    }
-                    func.call(elt, e);
-                });
-            };
-            elt.addEventListener(eventName, listener);
-            nodeData.onHandlers.push({event:eventName, listener:listener});
-        }
-
-        function processHxOn(elt) {
-            var hxOnValue = getAttributeValue(elt, 'hx-on');
-            if (hxOnValue) {
-                var handlers = {}
-                var lines = hxOnValue.split("\n");
-                var currentEvent = null;
-                var curlyCount = 0;
-                while (lines.length > 0) {
-                    var line = lines.shift();
-                    var match = line.match(/^\s*([a-zA-Z:\-\.]+:)(.*)/);
-                    if (curlyCount === 0 && match) {
-                        line.split(":")
-                        currentEvent = match[1].slice(0, -1); // strip last colon
-                        handlers[currentEvent] = match[2];
-                    } else {
-                        handlers[currentEvent] += line;
-                    }
-                    curlyCount += countCurlies(line);
-                }
-
-                for (var eventName in handlers) {
-                    addHxOnEventHandler(elt, eventName, handlers[eventName]);
-                }
-            }
-        }
-
-        function processHxOnWildcard(elt) {
-            // wipe any previous on handlers so that this function takes precedence
-            deInitOnHandlers(elt)
-
-            for (var i = 0; i < elt.attributes.length; i++) {
-                var name = elt.attributes[i].name
-                var value = elt.attributes[i].value
-                if (startsWith(name, "hx-on") || startsWith(name, "data-hx-on")) {
-                    var afterOnPosition = name.indexOf("-on") + 3;
-                    var nextChar = name.slice(afterOnPosition, afterOnPosition + 1);
-                    if (nextChar === "-" || nextChar === ":") {
-                        var eventName = name.slice(afterOnPosition + 1);
-                        // if the eventName starts with a colon or dash, prepend "htmx" for shorthand support
-                        if (startsWith(eventName, ":")) {
-                            eventName = "htmx" + eventName
-                        } else if (startsWith(eventName, "-")) {
-                            eventName = "htmx:" + eventName.slice(1);
-                        } else if (startsWith(eventName, "htmx-")) {
-                            eventName = "htmx:" + eventName.slice(5);
-                        }
-
-                        addHxOnEventHandler(elt, eventName, value)
-                    }
-                }
-            }
-        }
-
         function initNode(elt) {
             if (closest(elt, htmx.config.disableSelector)) {
                 cleanUpElement(elt)
@@ -2140,8 +2019,6 @@ return (function () {
                 if (oldHash) {
                     deInitNode(elt);
                 }
-
-                processHxOn(elt);
 
                 triggerEvent(elt, "htmx:beforeProcessNode")
 
@@ -2187,9 +2064,6 @@ return (function () {
             }
             initNode(elt);
             forEach(findElementsToProcess(elt), function(child) { initNode(child) });
-            // Because it happens second, the new way of adding onHandlers superseeds the old one
-            // i.e. if there are any hx-on:eventName attributes, the hx-on attribute will be ignored
-            forEach(findHxOnWildcardElements(elt), processHxOnWildcard);
         }
 
         //====================================================================
