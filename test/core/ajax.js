@@ -528,6 +528,43 @@ describe("Core htmx AJAX Tests", function(){
 
     });
 
+    it('properly handles valueless checkbox inputs', function()
+    {
+        var values;
+        this.server.respondWith("Post", "/test", function (xhr) {
+            values = getParameters(xhr);
+            xhr.respond(204, {}, "");
+        });
+
+        var form = make('<form hx-post="/test" hx-trigger="click">' +
+            '<input id="cb1" name="c1" value="cb1" type="checkbox">'+
+            '<input id="cb2" name="c2" checked type="checkbox">'+
+            '<input id="cb3" name="c3" type="checkbox">'+
+            '</form>');
+
+        form.click();
+        this.server.respond();
+        values.should.deep.equal({c2: "true", c3: "false"});
+
+        byId("cb1").checked = true;
+        form.click();
+        this.server.respond();
+        values.should.deep.equal({c1:"cb1", c2: "true", c3: "false"});
+
+        byId("cb1").checked = true;
+        byId("cb3").checked = true;
+        form.click();
+        this.server.respond();
+        values.should.deep.equal({c1:"cb1", c2: "true", c3: "true"});
+
+        byId("cb1").checked = true;
+        byId("cb2").checked = false;
+        byId("cb3").checked = true;
+        form.click();
+        this.server.respond();
+        values.should.deep.equal({c1:"cb1", c2: "false", c3: "true"});
+    });
+
     it('text nodes dont screw up settling via variable capture', function()
     {
         this.server.respondWith("GET", "/test", "<div id='d1' hx-trigger='click consume' hx-get='/test2'></div>fooo");
