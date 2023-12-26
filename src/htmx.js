@@ -622,11 +622,11 @@ return (function () {
                 return [closest(elt, normalizeSelector(selector.substr(8)))];
             } else if (selector.indexOf("find ") === 0) {
                 return [find(elt, normalizeSelector(selector.substr(5)))];
-            } else if (selector === "next") {
+            } else if (selector === "next" || selector === "nextElementSibling") {
                 return [elt.nextElementSibling]
             } else if (selector.indexOf("next ") === 0) {
                 return [scanForwardQuery(elt, normalizeSelector(selector.substr(5)))];
-            } else if (selector === "previous") {
+            } else if (selector === "previous" || selector === "previousElementSibling") {
                 return [elt.previousElementSibling]
             } else if (selector.indexOf("previous ") === 0) {
                 return [scanBackwardsQuery(elt, normalizeSelector(selector.substr(9)))];
@@ -836,10 +836,6 @@ return (function () {
             if (attrTarget) {
                 if (attrTarget === "this") {
                     return [findThisElement(elt, attrName)];
-                } else if (attrTarget === "nextElementSibling") {
-                    return [elt.nextElementSibling]
-                } else if (attrTarget === "previousElementSibling") {
-                    return [elt.previousElementSibling]
                 } else {
                     var result = querySelectorAllExt(elt, attrTarget);
                     // find `inherit` in string, make sure it's surrounded by commas or is at the start/end of string
@@ -880,15 +876,10 @@ return (function () {
         }
 
         function getTarget(elt) {
-            var explicitTarget = findThisElement(elt, "hx-target");
-            if (explicitTarget) {
-                var targetStr = getAttributeValue(explicitTarget, "hx-target")
+            var targetStr = getClosestAttributeValue(elt, "hx-target");
+            if (targetStr) {
                 if (targetStr === "this") {
-                    return explicitTarget
-                } else if (targetStr === "nextElementSibling") {
-                    return elt.nextElementSibling
-                } else if (targetStr === "previousElementSibling") {
-                    return elt.previousElementSibling
+                    return findThisElement(elt,'hx-target');
                 } else {
                     return querySelectorExt(elt, targetStr)
                 }
@@ -1111,8 +1102,8 @@ return (function () {
                 internalData.sseEventSource.close();
             }
             if (internalData.listenerInfos) {
-                forEach(internalData.listenerInfos, function(info) {
-                    if (element !== info.on) {
+                forEach(internalData.listenerInfos, function (info) {
+                    if (info.on) {
                         info.on.removeEventListener(info.trigger, info.listener);
                     }
                 });
@@ -1429,9 +1420,6 @@ return (function () {
         }
 
         var INPUT_SELECTOR = 'input, textarea, select';
-
-        /** @type {Object<string, import("./htmx").HtmxTriggerSpecification[]>} */
-        let triggerSpecsCache = {}
 
         /**
          * @param {HTMLElement} elt
@@ -1765,6 +1753,10 @@ return (function () {
                 }
             }
         }
+
+        //====================================================================
+        // Web Sockets
+        //====================================================================
 
         function processWebSocketInfo(elt, nodeData, info) {
             var values = splitOnWhitespace(info);
@@ -3384,9 +3376,6 @@ return (function () {
                     finalRequestPath: finalPath,
                     anchor: anchor
                 },
-                swapOverride: etc.swapOverride,
-                errorTargetOverride: etc.errorTargetOverride,
-                errorSwapOverride: etc.errorSwapOverride,
                 defaultHandler: handleAjaxResponse,
             };
 
@@ -3631,7 +3620,7 @@ return (function () {
             responseInfo.successful = !isError; // Make successful property available to response events	
             
             if (isError) {
-                target = responseInfo.errorTargetOverride || getErrorTarget(elt)
+                target = etc.errorTargetOverride || getErrorTarget(elt)
                 if (!target) {
                     return
                 }
@@ -3652,17 +3641,18 @@ return (function () {
                     saveCurrentPageToHistory();
                 }
 
-                var swapOverride = responseInfo.swapOverride;
+                var swapOverride = etc.swapOverride;
                 if (hasHeader(xhr,/HX-Reswap:/i)) {
                     swapOverride = xhr.getResponseHeader("HX-Reswap");
                 }
-                var swapSpec = getSwapSpecification(elt, isError, false, swapOverride, responseInfo.errorSwapOverride);
+                var swapSpec = getSwapSpecification(elt, isError, false, swapOverride, etc.errorSwapOverride);
+
+                if (swapSpec.hasOwnProperty('ignoreTitle')) {
+                    ignoreTitle = swapSpec.ignoreTitle;
+                }
 
                 if (target) {
                     target.classList.add(htmx.config.swappingClass);
-                }
-                if (swapSpec.hasOwnProperty('ignoreTitle')) {
-                    ignoreTitle = swapSpec.ignoreTitle;
                 }
 
                 // optional transition API promise callbacks
