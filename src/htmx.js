@@ -81,6 +81,7 @@ return (function () {
                 defaultErrorTarget: "mirror",
                 httpErrorCodesToSwap: [],
                 layoutQueuesEnabled: true,
+                cleanUpThrottlingEnabled: false,
                 disabledEvents: {},
             },
             eventSources: [],
@@ -1082,23 +1083,33 @@ return (function () {
         }
 
         function cleanUpThrottle(candidates) {
-            var start = Date.now()
-            while (candidates.length > 0) {
-                var target = candidates[0]
-                triggerEvent(target, "htmx:beforeCleanupElement")
-                deInitNode(target)
-                if (target.children) { // IE
-                    forEach(target.children, function(child) {
+            function doCleanup(elt) {
+                triggerEvent(elt, "htmx:beforeCleanupElement")
+                deInitNode(elt)
+                if (elt.children) { // IE
+                    forEach(elt.children, function (child) {
                         candidates.push(child)
                     });
                 }
-                candidates.splice(0, 1)
+            }
 
-                if (Date.now() - start > 4) {
-                    requestAnimationFrame(function() {
-                        cleanUpThrottle(candidates)
-                    })
-                    return
+            if (htmx.config.cleanUpThrottlingEnabled) {
+                var start = Date.now()
+                while (candidates.length > 0) {
+                    var elt = candidates[0]
+                    doCleanup(elt)
+                    candidates.splice(0, 1)
+
+                    if (Date.now() - start > 4) {
+                        requestAnimationFrame(function () {
+                            cleanUpThrottle(candidates)
+                        })
+                        return
+                    }
+                }
+            } else {
+                for (var i = 0; i < candidates.length; i++) {
+                    doCleanup(candidates[i])
                 }
             }
         }
