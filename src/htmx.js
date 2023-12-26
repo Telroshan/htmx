@@ -47,6 +47,9 @@ return (function () {
             logNone : logNone,
             logger : null,
             config : {
+                historyEnabled:true,
+                historyCacheSize:10,
+                refreshOnHistoryMiss:false,
                 defaultSwapStyle:'innerHTML',
                 defaultSwapDelay:0,
                 defaultSettleDelay:20,
@@ -2426,23 +2429,191 @@ return (function () {
         //====================================================================
         // History Support
         //====================================================================
+        var currentPathForHistory = location.pathname+location.search;
 
-        function pushUrlIntoHistory(path) {
-            history.pushState({htmx:true}, "", path);
+        function getHistoryElement() {
+            var historyElt = getDocument().querySelector('[hx-history-elt],[data-hx-history-elt]');
+            return historyElt || getDocument().body;
         }
 
-        function replaceUrlInHistory(path) {
-            history.replaceState({htmx:true}, "", path);
+        function saveToHistoryCache(url, content, title, scroll) {
+            if (!canAccessLocalStorage()) {
+                return;
+            }
+
+            if (htmx.config.historyCacheSize <= 0) {
+                // make sure that any already existing cache is purged
+                localStorage.removeItem("htmx-history-cache");
+                return;
+            }
+
+            url = normalizePath(url);
+
+            var historyCache = parseJSON(localStorage.getItem("htmx-history-cache")) || [];
+            for (var i = 0; i < historyCache.length; i++) {
+                if (historyCache[i].url === url) {
+                    historyCache.splice(i, 1);
+                    break;
+                }
+            }
+            var newHistoryItem = {url:url, content: content, title:title, scroll:scroll};
+            triggerEvent(getDocument().body, "htmx:historyItemCreated", {item:newHistoryItem, cache: historyCache})
+            historyCache.push(newHistoryItem)
+            while (historyCache.length > htmx.config.historyCacheSize) {
+                historyCache.shift();
+            }
+            while(historyCache.length > 0){
+                try {
+                    localStorage.setItem("htmx-history-cache", JSON.stringify(historyCache));
+                    break;
+                } catch (e) {
+                    triggerErrorEvent(getDocument().body, "htmx:historyCacheError", {cause:e, cache: historyCache})
+                    historyCache.shift(); // shrink the cache and retry
+                }
+            }
+        }
+
+        function getCachedHistory(url) {
+            if (!canAccessLocalStorage()) {
+                return null;
+            }
+
+            url = normalizePath(url);
+
+            var historyCache = parseJSON(localStorage.getItem("htmx-history-cache")) || [];
+            for (var i = 0; i < historyCache.length; i++) {
+                if (historyCache[i].url === url) {
+                    return historyCache[i];
+                }
+            }
+            return null;
+        }
+
+        function cleanInnerHtmlForHistory(elt) {
+            var className = htmx.config.requestClass;
+            var clone = elt.cloneNode(true);
+            forEach(findAll(clone, "." + className), function(child){
+                removeClassFromElement(child, className);
+            });
+            return clone.innerHTML;
         }
 
         function saveCurrentPageToHistory() {
-            replaceUrlInHistory(window.location.href);
+            var elt = getHistoryElement();
+            var path = currentPathForHistory || location.pathname+location.search;
+
+            // Allow history snapshot feature to be disabled where hx-history="false"
+            // is present *anywhere* in the current document we're about to save,
+            // so we can prevent privileged data entering the cache.
+            // The page will still be reachable as a history entry, but htmx will fetch it
+            // live from the server onpopstate rather than look in the localStorage cache
+            var disableHistoryCache
+            try {
+                disableHistoryCache = getDocument().querySelector('[hx-history="false" i],[data-hx-history="false" i]')
+            } catch (e) {
+                // IE11: insensitive modifier not supported so fallback to case sensitive selector
+                disableHistoryCache = getDocument().querySelector('[hx-history="false"],[data-hx-history="false"]')
+            }
+            if (!disableHistoryCache && htmx.config.historyCacheSize <= 0) {
+                // make sure that any already existing cache is purged
+                localStorage.removeItem("htmx-history-cache");
+                disableHistoryCache = true
+            }
+            if (!disableHistoryCache) {
+                triggerEvent(getDocument().body, "htmx:beforeHistorySave", {path: path, historyElt: elt});
+                saveToHistoryCache(path, cleanInnerHtmlForHistory(elt), getDocument().title, window.scrollY);
+            }
+
+            if (htmx.config.historyEnabled) history.replaceState({htmx: true}, getDocument().title, window.location.href);
+        }
+
+        function pushUrlIntoHistory(path) {
+            // remove the cache buster parameter, if any
+            if (htmx.config.getCacheBusterParam) {
+                path = path.replace(/org\.htmx\.cache-buster=[^&]*&?/, '')
+                if (endsWith(path, '&') || endsWith(path, "?")) {
+                    path = path.slice(0, -1);
+                }
+            }
+            if(htmx.config.historyEnabled) {
+                history.pushState({htmx:true}, "", path);
+            }
+            currentPathForHistory = path;
+        }
+
+        function replaceUrlInHistory(path) {
+            if(htmx.config.historyEnabled)  history.replaceState({htmx:true}, "", path);
+            currentPathForHistory = path;
         }
 
         function settleImmediately(tasks) {
             forEach(tasks, function (task) {
                 task.call();
             });
+        }
+
+        function loadHistoryFromServer(path) {
+            var request = new XMLHttpRequest();
+            var details = {path: path, xhr:request};
+            triggerEvent(getDocument().body, "htmx:historyCacheMiss", details);
+            request.open('GET', path, true);
+            request.setRequestHeader("HX-Request", "true");
+            request.setRequestHeader("HX-History-Restore-Request", "true");
+            request.setRequestHeader("HX-Current-URL", getDocument().location.href);
+            request.onload = function () {
+                if (this.status >= 200 && this.status < 400) {
+                    triggerEvent(getDocument().body, "htmx:historyCacheMissLoad", details);
+                    var fragment = makeFragment(this.response);
+                    // @ts-ignore
+                    fragment = fragment.querySelector('[hx-history-elt],[data-hx-history-elt]') || fragment;
+                    var historyElement = getHistoryElement();
+                    var settleInfo = makeSettleInfo(historyElement);
+                    var title = findTitle(this.response);
+                    if (title) {
+                        var titleElt = find("title");
+                        if (titleElt) {
+                            titleElt.innerHTML = title;
+                        } else {
+                            window.document.title = title;
+                        }
+                    }
+                    // @ts-ignore
+                    swapInnerHTML(historyElement, fragment, settleInfo)
+                    settleImmediately(settleInfo.tasks);
+                    currentPathForHistory = path;
+                    triggerEvent(getDocument().body, "htmx:historyRestore", {path: path, cacheMiss:true, serverResponse:this.response});
+                } else {
+                    triggerErrorEvent(getDocument().body, "htmx:historyCacheMissLoadError", details);
+                }
+            };
+            request.send();
+        }
+
+        function restoreHistory(path) {
+            saveCurrentPageToHistory();
+            path = path || location.pathname+location.search;
+            var cached = getCachedHistory(path);
+            if (cached) {
+                var fragment = makeFragment(cached.content);
+                var historyElement = getHistoryElement();
+                var settleInfo = makeSettleInfo(historyElement);
+                swapInnerHTML(historyElement, fragment, settleInfo)
+                settleImmediately(settleInfo.tasks);
+                document.title = cached.title;
+                setTimeout(function () {
+                    window.scrollTo(0, cached.scroll);
+                }, 0); // next 'tick', so browser has time to render layout
+                currentPathForHistory = path;
+                triggerEvent(getDocument().body, "htmx:historyRestore", {path:path, item:cached});
+            } else {
+                if (htmx.config.refreshOnHistoryMiss) {
+
+                    // @ts-ignore: optional parameter in reload() function throws error
+                    window.location.reload(true);
+                } else {
+                    loadHistoryFromServer(path);
+                }
+            }
         }
 
         function addRequestIndicatorClasses(elt) {
@@ -3963,6 +4134,9 @@ return (function () {
             insertIndicatorStyles();
             var body = getDocument().body;
             processNode(body);
+            var restoredElts = getDocument().querySelectorAll(
+                "[hx-trigger='restored'],[data-hx-trigger='restored']"
+            );
             body.addEventListener("htmx:abort", function (evt) {
                 var target = evt.target;
                 var internalData = getInternalData(target);
@@ -3970,14 +4144,23 @@ return (function () {
                     internalData.xhr.abort();
                 }
             });
-            var lastState = history.state
+            /** @type {(ev: PopStateEvent) => any} */
+            const originalPopstate = window.onpopstate ? window.onpopstate.bind(window) : null;
             /** @type {(ev: PopStateEvent) => any} */
             window.onpopstate = function (event) {
-                if ((event.state && event.state.htmx) ||
-                    (!event.state && lastState && lastState.htmx)) {
-                    window.location.reload()
+                if (event.state && event.state.htmx) {
+                    restoreHistory();
+                    forEach(restoredElts, function(elt){
+                        triggerEvent(elt, 'htmx:restored', {
+                            'document': getDocument(),
+                            'triggerEvent': triggerEvent
+                        });
+                    });
+                } else {
+                    if (originalPopstate) {
+                        originalPopstate(event);
+                    }
                 }
-                lastState = event.state
             };
             window.addEventListener("beforeunload", function () {
                 tabIsClosing = true
