@@ -78,6 +78,10 @@ return (function () {
                 scrollIntoViewOnBoost: true,
                 triggerSpecsCache: null,
                 layoutQueuesEnabled: true,
+                defaultErrorSwapStyle: "none",
+                defaultErrorTarget: "mirror",
+                /** @type Array<number> */
+                httpErrorCodesToSwap: [],
             },
             eventSources: [],
             parseInterval:parseInterval,
@@ -851,15 +855,42 @@ return (function () {
             }
         }
 
-        function getErrorTarget(elt) {
-            var explicitTarget = findThisElement(elt, "hx-error-target");
-            if (explicitTarget) {
-                var targetStr = getAttributeValue(explicitTarget, "hx-error-target");
-                if (targetStr === "this") {
-                    return explicitTarget;
-                } else {
-                    return querySelectorExt(elt, targetStr)
+        /**
+         * @param elt
+         * @param initialTarget
+         * @param swapOverride
+         * @returns {{shouldSwap: boolean, target: (HTMLElement|null), targetStr: string}}
+         */
+        function getErrorTargetSpec(elt, initialTarget, swapOverride) {
+            var targetStr = getClosestAttributeValue(elt, "hx-error-target") || htmx.config.defaultErrorTarget
+            var swapStr = swapOverride || getClosestAttributeValue(elt, "hx-error-swap") || htmx.config.defaultErrorSwapStyle
+            if (!swapStr || swapStr === "none") {
+                return {
+                    shouldSwap: false,
+                    target: null,
+                    targetStr: "",
                 }
+            }
+            if (targetStr) {
+                var target
+                if (targetStr === "mirror") {
+                    target = initialTarget
+                } else if (targetStr === "this") {
+                    target = findThisElement(elt, "hx-error-target") || elt;
+                } else {
+                    target = querySelectorExt(elt, targetStr)
+                }
+                return {
+                    shouldSwap: true,
+                    target: target,
+                    targetStr: targetStr,
+                }
+            }
+            // fallback to normal hx-target if no error target was specified
+            return {
+                shouldSwap: true,
+                target: initialTarget,
+                targetStr: "",
             }
         }
 
@@ -915,7 +946,7 @@ return (function () {
 
                         target = beforeSwapDetails.target; // allow re-targeting
                         if (beforeSwapDetails['shouldSwap']){
-                            swap(swapStyle, target, target, fragment, settleInfo);
+                            swap(swapStyle, target, target, fragment, settleInfo, htmx.config.defaultSwapStyle);
                         }
                         forEach(settleInfo.elts, function (elt) {
                             triggerEvent(elt, 'htmx:oobAfterSwap', beforeSwapDetails);
@@ -1175,7 +1206,7 @@ return (function () {
             return fragment;
         }
 
-        function swap(swapStyle, elt, target, fragment, settleInfo) {
+        function swap(swapStyle, elt, target, fragment, settleInfo, defaultSwapStyle) {
             switch (swapStyle) {
                 case "none":
                     return;
@@ -1222,7 +1253,7 @@ return (function () {
                     if (swapStyle === "innerHTML") {
                         swapInnerHTML(target, fragment, settleInfo);
                     } else {
-                        swap(htmx.config.defaultSwapStyle, elt, target, fragment, settleInfo);
+                        swap(defaultSwapStyle, elt, target, fragment, settleInfo, defaultSwapStyle);
                     }
             }
         }
@@ -1237,14 +1268,14 @@ return (function () {
             }
         }
 
-        function selectAndSwap(swapStyle, target, elt, responseText, settleInfo, selectOverride) {
+        function selectAndSwap(swapStyle, target, elt, responseText, settleInfo, selectOverride, defaultSwapStyle) {
             settleInfo.title = findTitle(responseText);
             var fragment = makeFragment(responseText);
             if (fragment) {
                 handleOutOfBandSwaps(elt, fragment, settleInfo);
                 fragment = maybeSelectFromResponse(elt, fragment, selectOverride);
                 handlePreservedElements(fragment);
-                return swap(swapStyle, elt, target, fragment, settleInfo);
+                return swap(swapStyle, elt, target, fragment, settleInfo, defaultSwapStyle);
             }
         }
 
@@ -1894,11 +1925,11 @@ return (function () {
                         response = extension.transformResponse(response, null, elt);
                     });
 
-                    var swapSpec = getSwapSpecification(elt, false, true, null, null)
+                    var swapSpec = getSwapSpecification(elt,null, false, true)
                     var target = getTarget(elt)
                     var settleInfo = makeSettleInfo(elt);
 
-                    selectAndSwap(swapSpec.swapStyle, target, elt, response, settleInfo)
+                    selectAndSwap(swapSpec.swapStyle, target, elt, response, settleInfo, null, htmx.config.defaultSwapStyle)
                     writeLayout(function() {
                         settleImmediately(settleInfo.tasks)
                         triggerEvent(elt, "htmx:sseMessage", event)
@@ -2909,25 +2940,32 @@ return (function () {
         /**
          *
          * @param {HTMLElement} elt
-         * @param {boolean} isError
-         * @param {boolean} isSse
-         * @param {string} swapOverride
+         * @param {string?} swapInfoOverride
+         * @param {boolean?} isStandardErrorSwap
+         * @param {boolean?} isSseSwap
          * @returns {import("./htmx").HtmxSwapSpecification}
          */
-        function getSwapSpecification(elt, isError, isSse, swapOverride, errorSwapOverride) {
-            var swapInfo;
-            if (isError) {
-                swapInfo = errorSwapOverride || getClosestAttributeValue(elt, "hx-error-swap");
-            } else if (typeof swapOverride === "string") {
-                swapInfo = swapOverride
-            } else if (isSse) {
+        function getSwapSpecification(elt, swapInfoOverride, isStandardErrorSwap, isSseSwap) {
+            var swapInfo
+            var defaultSwapStyle = htmx.config.defaultSwapStyle
+            if (swapInfoOverride) {
+                swapInfo = swapInfoOverride
+            } else if (isStandardErrorSwap) {
+                if (htmx.config.defaultErrorSwapStyle !== "mirror") {
+                    defaultSwapStyle = htmx.config.defaultErrorSwapStyle
+                }
+                swapInfo = getClosestAttributeValue(elt, "hx-error-swap")
+                if ((swapInfo && swapInfo === "mirror") || (!swapInfo && htmx.config.defaultErrorSwapStyle === "mirror")) {
+                    swapInfo = getClosestAttributeValue(elt, "hx-swap") || htmx.config.defaultSwapStyle
+                }
+            } else if (isSseSwap) {
                 swapInfo = getClosestAttributeValue(elt, "hx-sse-swap");
-            }
-            if (!isError && !swapInfo) {
-                swapInfo = getClosestAttributeValue(elt, "hx-swap");
+            } else {
+                swapInfo = getClosestAttributeValue(elt, "hx-swap")
             }
             var swapSpec = {
-                "swapStyle" : getInternalData(elt).boosted ? 'innerHTML' : htmx.config.defaultSwapStyle,
+                "defaultSwapStyle": defaultSwapStyle,
+                "swapStyle" : getInternalData(elt).boosted ? 'innerHTML' : defaultSwapStyle,
                 "swapDelay" : htmx.config.defaultSwapDelay,
                 "settleDelay" : htmx.config.defaultSettleDelay
             }
@@ -3171,8 +3209,8 @@ return (function () {
                             headers : context.headers,
                             values : context.values,
                             targetOverride: resolveTarget(context.target),
-                            swapOverride: context.swap,
                             errorTargetOverride: resolveTarget(context.errorTarget),
+                            swapOverride: context.swap,
                             errorSwapOverride: context.errorSwap,
                             select: context.select,
                             returnPromise: true
@@ -3686,7 +3724,6 @@ return (function () {
             if (hasHeader(xhr, /HX-Location:/i)) {
                 saveCurrentPageToHistory();
                 var redirectPath = xhr.getResponseHeader("HX-Location");
-                var swapSpec;
                 if (redirectPath.indexOf("{") === 0) {
                     swapSpec = parseJSON(redirectPath);
                     // what's the best way to throw an error if the user didn't include this
@@ -3712,6 +3749,37 @@ return (function () {
                 return;
             }
 
+            // by default htmx only swaps on 200 return codes and does not swap
+            // on 204 'No Content'
+            // this can be overridden by responding to the htmx:beforeSwap event and
+            // overriding the detail.shouldSwap property
+            var shouldSwap = xhr.status >= 200 && xhr.status < 400 && xhr.status !== 204;
+
+            var swapOverride = isError ? etc.errorSwapOverride : etc.swapOverride;
+            // User could force shouldSwap to true from a htmx:beforeSwap listener, in which case we don't want to
+            // interfere with hx-error-target & hx-error-swap logic by relying solely on isError
+            var isStandardErrorSwap = false
+            if (isError && (htmx.config.httpErrorCodesToSwap.length === 0 || htmx.config.httpErrorCodesToSwap.indexOf(xhr.status) >= 0)) {
+                if (etc.errorTargetOverride) {
+                    responseInfo.target = etc.errorTargetOverride
+                }
+                // Error swap override set to "mirror" should replicate standard swap override if defined
+                // Otherwise, fallback to attributes then default strategy
+                if (swapOverride === "mirror" && etc.swapOverride) {
+                    swapOverride = etc.swapOverride
+                }
+                var errorSwapSpec = getErrorTargetSpec(elt, responseInfo.target, swapOverride);
+                if (errorSwapSpec.shouldSwap) {
+                    shouldSwap = true;
+                    isStandardErrorSwap = true
+                    responseInfo.target = errorSwapSpec.target;
+                    if (responseInfo.target == null || responseInfo.target == DUMMY_ELT) {
+                        triggerErrorEvent(elt, 'htmx:targetError', {target: errorSwapSpec.targetStr});
+                        return;
+                    }
+                }
+            }
+
             if (hasHeader(xhr,/HX-Retarget:/i)) {
                 if (xhr.getResponseHeader("HX-Retarget") === "this") {
                     responseInfo.target = elt;
@@ -3722,17 +3790,9 @@ return (function () {
 
             var historyUpdate = determineHistoryUpdates(elt, responseInfo);
 
-            // by default htmx only swaps on 200 return codes and does not swap
-            // on 204 'No Content'
-            // this can be ovverriden by responding to the htmx:beforeSwap event and
-            // overriding the detail.shouldSwap property
-            var shouldSwap = xhr.status >= 200 && xhr.status < 400 && xhr.status !== 204;
             var serverResponse = xhr.response;
             var ignoreTitle = htmx.config.ignoreTitle
             var beforeSwapDetails = mergeObjects({shouldSwap: shouldSwap, serverResponse:serverResponse, isError:isError, ignoreTitle:ignoreTitle }, responseInfo);
-            if (isError) {
-                beforeSwapDetails.shouldSwap = true
-            }
             if (target && !triggerEvent(target, 'htmx:beforeSwap', beforeSwapDetails)) return;
 
             target = beforeSwapDetails.target; // allow re-targeting
@@ -3743,14 +3803,7 @@ return (function () {
 
             responseInfo.target = target; // Make updated target available to response events
             responseInfo.failed = isError; // Make failed property available to response events
-            responseInfo.successful = !isError; // Make successful property available to response events	
-            
-            if (isError) {
-                target = etc.errorTargetOverride || getErrorTarget(elt)
-                if (!target) {
-                    return
-                }
-            }	
+            responseInfo.successful = !isError; // Make successful property available to response events
 
             if (beforeSwapDetails.shouldSwap) {
                 if (xhr.status === 286) {
@@ -3767,11 +3820,10 @@ return (function () {
                     saveCurrentPageToHistory();
                 }
 
-                var swapOverride = etc.swapOverride;
                 if (hasHeader(xhr,/HX-Reswap:/i)) {
                     swapOverride = xhr.getResponseHeader("HX-Reswap");
                 }
-                var swapSpec = getSwapSpecification(elt, isError, false, swapOverride, etc.errorSwapOverride);
+                var swapSpec = getSwapSpecification(elt, swapOverride, isStandardErrorSwap, false);
 
                 if (swapSpec.hasOwnProperty('ignoreTitle')) {
                     ignoreTitle = swapSpec.ignoreTitle;
@@ -3823,7 +3875,7 @@ return (function () {
                         }
 
                         var settleInfo = makeSettleInfo(target);
-                        selectAndSwap(swapSpec.swapStyle, target, elt, serverResponse, settleInfo, selectOverride);
+                        selectAndSwap(swapSpec.swapStyle, target, elt, serverResponse, settleInfo, selectOverride, swapSpec.defaultSwapStyle);
 
                         if (selectionInfo.elt &&
                             !bodyContains(selectionInfo.elt) &&
