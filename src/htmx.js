@@ -77,6 +77,7 @@ return (function () {
                 ignoreTitle: false,
                 scrollIntoViewOnBoost: true,
                 triggerSpecsCache: null,
+                layoutQueuesEnabled: true,
             },
             eventSources: [],
             parseInterval:parseInterval,
@@ -728,18 +729,31 @@ return (function () {
         const selectsToResize = []
         /** @type HTMLSelectElement */
         let selectResizing
-        
+
+        // Wrap in a function so that all usages can be well minified instead of direct un-minifiable property access
+        function areLayoutQueuesEnabled() {
+            return htmx.config.layoutQueuesEnabled
+        }
+
         function readLayout(callback) {
-            layoutReadsQueue.push(callback)
-            if (document.hidden) {
-                processLayoutQueues()
+            if (areLayoutQueuesEnabled()) {
+                layoutReadsQueue.push(callback)
+                if (document.hidden) {
+                    processLayoutQueues()
+                }
+            } else {
+                callback()
             }
         }
 
         function writeLayout(callback) {
-            layoutWritesQueue.push(callback)
-            if (document.hidden) {
-                processLayoutQueues()
+            if (areLayoutQueuesEnabled()) {
+                layoutWritesQueue.push(callback)
+                if (document.hidden) {
+                    processLayoutQueues()
+                }
+            } else {
+                callback()
             }
         }
         
