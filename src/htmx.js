@@ -3550,7 +3550,7 @@ return (function () {
                     responseHandler(elt, responseInfo);
 
                     if (!hasHeader(xhr, /HX-Redirect:/i)) {
-                        removeRequestIndicators(indicators);
+                        removeRequestIndicators(indicators, disableElts);
                     }
                     
                     triggerEvent(elt, 'htmx:afterRequest', responseInfo);
