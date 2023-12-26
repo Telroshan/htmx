@@ -77,11 +77,10 @@ return (function () {
                 ignoreTitle: false,
                 scrollIntoViewOnBoost: true,
                 triggerSpecsCache: null,
-                layoutQueuesEnabled: true,
                 defaultErrorSwapStyle: "none",
                 defaultErrorTarget: "mirror",
-                /** @type Array<number> */
                 httpErrorCodesToSwap: [],
+                layoutQueuesEnabled: true,
             },
             eventSources: [],
             parseInterval:parseInterval,

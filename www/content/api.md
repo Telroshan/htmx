@@ -138,6 +138,7 @@ Note that using a [meta tag](@/docs.md#config) is the preferred mechanism for se
 * `defaultErrorSwapStyle:'none'` - string: the default swap style to use if [`hx-error-swap`](@/attributes/hx-error-swap.md) is omitted
 * `defaultErrorTarget:'mirror'` - string: the default target strategy to use if [`hx-error-target`](@/attributes/hx-error-target.md) is omitted
 * `httpErrorCodesToSwap:[]` - array of numbers: the [HTTP error codes](https://developer.mozilla.org/docs/Web/HTTP/Status) to enable errors swapping for (all other error codes will be ignored). If empty, all error codes will be swapped
+* `layoutQueuesEnabled:true` - boolean: whether to enable the read/write layout queues system to avoid layout thrashing, delaying layout reads and writes across animation frames
 
 ##### Example
 

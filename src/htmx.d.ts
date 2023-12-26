@@ -451,7 +451,12 @@ export interface HtmxConfig {
      * If empty, all error codes will be swapped
      * @default []
      */
-    httpErrorCodesToSwap?: string[]
+    httpErrorCodesToSwap?: string[];
+    /**
+     * Whether to enable the read/write layout queues system to avoid layout thrashing, delaying layout reads and writes across animation frames
+     * @default true
+     */
+    layoutQueuesEnabled?: boolean;
 }
 
 /**
