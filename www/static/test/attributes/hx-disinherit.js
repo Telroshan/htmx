@@ -86,54 +86,5 @@ describe("hx-disinherit attribute", function() {
         var count = (div.parentElement.innerHTML.match(/snowflake/g) || []).length;
         count.should.equal(1);
     });
-
-    it('boosted element hx-disinherit sanity check', function () {
-        try {
-            var request;
-            var handler = htmx.on("htmx:beforeRequest", function (evt) {
-                request = evt;
-            });
-            var div = make('<div hx-boost="true" hx-disinherit="false"><a id="a1" href="/test">Click me</a></div>');
-            var link = byId("a1");
-            link.click();
-            // should match the fully resolved href of the boosted element
-            should.equal(request.detail.requestConfig.path, '/test');
-            should.equal(request.detail.elt["htmx-internal-data"].boosted, true);
-        } finally {
-            htmx.off("htmx:beforeRequest", handler);
-        }
-    });
-
-    it('boosted element inheritance manual unset', function () {
-        try {
-            var request;
-            var handler = htmx.on("htmx:beforeRequest", function (evt) {
-                request = evt;
-            });
-            var div = make('<div hx-boost="true" hx-get="/test"><div hx-boost="unset"><a id="a1" href="/test">Click me</a></div></div>');
-            var link = byId("a1");
-            should.equal(link["htmx-internal-data"].boosted, undefined);
-        } finally {
-            htmx.off("htmx:beforeRequest", handler);
-        }
-    });
-
-    it('nested htmx-node with boosting parent', function () {
-        try {
-            var request;
-            var handler = htmx.on("htmx:beforeRequest", function (evt) {
-                request = evt;
-            });
-            var div = make('<div hx-boost="true" hx-target="#test" hx-disinherit="*"><div id="test"></div><a id="a1" href="/test" hx-get="/test2">Click me</a></div>');
-            var link = byId("a1");
-            link.click();
-            should.equal(request.detail.requestConfig.path, '/test2');
-            should.equal(request.detail.elt["htmx-internal-data"].boosted, undefined);
-            should.equal(request.detail.target.id, "a1");
-        } finally {
-            htmx.off("htmx:beforeRequest", handler);
-        }
-    });
-
 });
 

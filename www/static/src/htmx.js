@@ -75,7 +75,6 @@ return (function () {
                 methodsThatUseUrlParams: ["get", "delete"],
                 selfRequestsOnly: false,
                 ignoreTitle: false,
-                scrollIntoViewOnBoost: true,
                 triggerSpecsCache: null,
                 defaultErrorSwapStyle: "none",
                 defaultErrorTarget: "mirror",
@@ -842,12 +841,7 @@ return (function () {
                     return querySelectorExt(elt, targetStr)
                 }
             } else {
-                var data = getInternalData(elt);
-                if (data.boosted) {
-                    return getDocument().body;
-                } else {
-                    return elt;
-                }
+                return elt;
             }
         }
 
@@ -1522,38 +1516,6 @@ return (function () {
             }, spec.pollInterval);
         }
 
-        function isLocalLink(elt) {
-            return location.hostname === elt.hostname &&
-                getRawAttribute(elt,'href') &&
-                getRawAttribute(elt,'href').indexOf("#") !== 0;
-        }
-
-        function boostElement(elt, nodeData, triggerSpecs) {
-            if ((elt.tagName === "A" && isLocalLink(elt) && (elt.target === "" || elt.target === "_self")) || elt.tagName === "FORM") {
-                nodeData.boosted = true;
-                var verb, path;
-                if (elt.tagName === "A") {
-                    verb = "get";
-                    path = getRawAttribute(elt, 'href')
-                } else {
-                    var rawAttribute = getRawAttribute(elt, "method");
-                    verb = rawAttribute ? rawAttribute.toLowerCase() : "get";
-                    if (verb === "get") {
-                    }
-                    path = getRawAttribute(elt, 'action');
-                }
-                triggerSpecs.forEach(function(triggerSpec) {
-                    addEventListener(elt, function(elt, evt) {
-                        if (closest(elt, htmx.config.disableSelector)) {
-                            cleanUpElement(elt)
-                            return
-                        }
-                        issueAjaxRequest(verb, path, elt, evt)
-                    }, nodeData, triggerSpec, true);
-                });
-            }
-        }
-
         /**
          *
          * @param {Event} evt
@@ -1574,10 +1536,6 @@ return (function () {
                 }
             }
             return false;
-        }
-
-        function ignoreBoostedAnchorCtrlClick(elt, evt) {
-            return getInternalData(elt).boosted && elt.tagName === "A" && evt.type === "click" && (evt.ctrlKey || evt.metaKey);
         }
 
         function maybeFilterEvent(triggerSpec, elt, evt) {
@@ -1612,9 +1570,6 @@ return (function () {
                 var eventListener = function (evt) {
                     if (!bodyContains(elt)) {
                         eltToListenOn.removeEventListener(triggerSpec.trigger, eventListener);
-                        return;
-                    }
-                    if (ignoreBoostedAnchorCtrlClick(elt, evt)) {
                         return;
                     }
                     if (explicitCancel || shouldCancel(evt, elt)) {
@@ -1941,8 +1896,7 @@ return (function () {
 
         function findElementsToProcess(elt) {
             if (elt.querySelectorAll) {
-                var boostedSelector = ", [hx-boost] a, [data-hx-boost] a, a[hx-boost], a[data-hx-boost]";
-                var results = elt.querySelectorAll(VERB_SELECTOR + boostedSelector + ", form, [type='submit'], [hx-sse], [data-hx-sse], " +
+                var results = elt.querySelectorAll(VERB_SELECTOR + ", form, [type='submit'], [hx-sse], [data-hx-sse], " +
                     " [hx-ext], [data-hx-ext], [hx-trigger], [data-hx-trigger]");
                 return results;
             } else {
@@ -2008,9 +1962,7 @@ return (function () {
                 var hasExplicitHttpAction = processVerbs(elt, nodeData, triggerSpecs);
 
                 if (!hasExplicitHttpAction) {
-                    if (getClosestAttributeValue(elt, "hx-boost") === "true") {
-                        boostElement(elt, nodeData, triggerSpecs);
-                    } else if (hasAttribute(elt, 'hx-trigger')) {
+                    if (hasAttribute(elt, 'hx-trigger')) {
                         triggerSpecs.forEach(function (triggerSpec) {
                             // For "naked" triggers, don't do anything at all
                             addTriggerHandler(elt, triggerSpec, nodeData, function () {
@@ -2594,9 +2546,6 @@ return (function () {
             if (prompt !== undefined) {
                 headers["HX-Prompt"] = prompt;
             }
-            if (getInternalData(elt).boosted) {
-                headers["HX-Boosted"] = "true";
-            }
             return headers;
         }
 
@@ -2688,12 +2637,9 @@ return (function () {
             }
             var swapSpec = {
                 "defaultSwapStyle": defaultSwapStyle,
-                "swapStyle" : getInternalData(elt).boosted ? 'innerHTML' : defaultSwapStyle,
+                "swapStyle" : defaultSwapStyle,
                 "swapDelay" : htmx.config.defaultSwapDelay,
                 "settleDelay" : htmx.config.defaultSettleDelay
-            }
-            if (htmx.config.scrollIntoViewOnBoost && getInternalData(elt).boosted && !isAnchorLink(elt)) {
-              swapSpec["show"] = "top"
             }
             if (swapInfo) {
                 var split = splitOnWhitespace(swapInfo);
@@ -3172,12 +3118,9 @@ return (function () {
 
             var requestAttrValues = getValuesForElement(elt, 'hx-request');
 
-            var eltIsBoosted = getInternalData(elt).boosted;
-
             var useUrlParams = htmx.config.methodsThatUseUrlParams.indexOf(verb) >= 0
 
             var requestConfig = {
-                boosted: eltIsBoosted,
                 useUrlParams: useUrlParams,
                 parameters: filteredParameters,
                 unfilteredParameters: allParameters,
@@ -3257,7 +3200,7 @@ return (function () {
             }
 
             var responseInfo = {
-                xhr: xhr, target: target, requestConfig: requestConfig, etc: etc, boosted: eltIsBoosted, select: select,
+                xhr: xhr, target: target, requestConfig: requestConfig, etc: etc, select: select,
                 pathInfo: {
                     requestPath: path,
                     finalRequestPath: finalPath,
@@ -3275,7 +3218,7 @@ return (function () {
                     if (!hasHeader(xhr, /HX-Redirect:/i)) {
                         removeRequestIndicators(indicators, disableElts);
                     }
-                    
+
                     triggerEvent(elt, 'htmx:afterRequest', responseInfo);
                     triggerEvent(elt, 'htmx:afterOnLoad', responseInfo);
                     // if the body no longer contains the element, trigger the event on the closest parent
@@ -3386,7 +3329,6 @@ return (function () {
 
             var pushUrl = getClosestAttributeValue(elt, "hx-push-url");
             var replaceUrl = getClosestAttributeValue(elt, "hx-replace-url");
-            var elementIsBoosted = getInternalData(elt).boosted;
 
             var saveType = null;
             var path = null;
@@ -3397,9 +3339,6 @@ return (function () {
             } else if (replaceUrl) {
                 saveType = "replace";
                 path = replaceUrl;
-            } else if (elementIsBoosted) {
-                saveType = "push";
-                path = responsePath || requestPath; // if there is no response path, go with the original request path
             }
 
             if (path) {
