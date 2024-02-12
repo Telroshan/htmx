@@ -704,6 +704,14 @@ var htmx = (function() {
   }
 
   /**
+   * @param {Node} elt
+   * @return {Element|Document|DocumentFragment|null}
+   */
+  function asQueryable(elt) {
+    return elt instanceof Element || elt instanceof Document || elt instanceof DocumentFragment ? elt : null
+  }
+
+  /**
    * @param {Node|string} node
    * @param {string} clazz
    * @param {number} [delay]
@@ -1169,7 +1177,7 @@ var htmx = (function() {
       if (id && id.length > 0) {
         const normalizedId = id.replace("'", "\\'")
         const normalizedTag = newNode.tagName.replace(':', '\\:')
-        const parentElt = asElement(parentNode)
+        const parentElt = asQueryable(parentNode)
         const oldNode = parentElt && parentElt.querySelector(normalizedTag + "[id='" + normalizedId + "']")
         if (oldNode && oldNode !== parentElt) {
           const newAttributes = newNode.cloneNode()
