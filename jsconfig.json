@@ -1,11 +1,11 @@
 {
     "compilerOptions": {
-        "target": "es5",
+        "target": "es6",
         "noEmit": true,
         "checkJs": true,
         "jsx": "react",
         "strict": false,
-        "lib": [ "dom" ]
+        "lib": [ "dom", "dom.iterable" ]
     },
     "include": [
         "./src/htmx.js"
