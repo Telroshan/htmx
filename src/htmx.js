@@ -16,6 +16,15 @@ var htmx = (function() {
     find,
     findAll,
     closest,
+    /**
+     * Returns the input values that would resolve for a given element via the htmx value resolution mechanism
+     *
+     * @see https://htmx.org/api/#values
+     *
+     * @param {Element} elt the element to resolve values on
+     * @param {HttpVerb} type the request type (e.g. **get** or **post**) non-GET's will include the enclosing form of the element. Defaults to **post**
+     * @returns {Object}
+     */
     values: function(elt, type) {
       const inputValues = getInputValues(elt, type || 'post')
       return inputValues.values
@@ -33,6 +42,11 @@ var htmx = (function() {
     /* Debugging */
     logAll,
     logNone,
+    /**
+     * The logger htmx uses to log with
+     *
+     * @see https://htmx.org/api/#logger
+     */
     logger: null,
     /**
      * A property holding the configuration htmx uses at runtime.
@@ -220,8 +234,6 @@ var htmx = (function() {
     withExtensions
   }
 
-  /** @typedef {'get'|'head'|'post'|'put'|'delete'|'connect'|'options'|'trace'|'patch'} HttpVerb */
-
   const VERBS = ['get', 'post', 'put', 'delete', 'patch']
   const VERB_SELECTOR = VERBS.map(function(verb) {
     return '[hx-' + verb + '], [data-hx-' + verb + ']'
@@ -244,7 +256,13 @@ var htmx = (function() {
   }
 
   /**
-   * @param {string} str
+   * Parses an interval string consistent with the way htmx does. Useful for plugins that have timing-related attributes.
+   *
+   * Caution: Accepts an int followed by either **s** or **ms**. All other values use **parseFloat**
+   *
+   * @see https://htmx.org/api/#parseInterval
+   *
+   * @param {string} str timing string
    * @returns {number|undefined}
    */
   function parseInterval(str) {
@@ -466,6 +484,12 @@ var htmx = (function() {
       }
     })
   }
+
+  /**
+   * @typedef {DocumentFragment & {title?: string}} DocumentFragmentWithTitle
+   * @description  a document fragment representing the response HTML, including
+   * a `title` property for any title information found
+   */
 
   /**
    * @param {string} response HTML
@@ -748,7 +772,11 @@ var htmx = (function() {
   }
 
   /**
-   * @param {(evt: CustomEvent) => void} callback
+   * Adds a callback for the **htmx:load** event. This can be used to process new content, for example initializing the content with a javascript library
+   *
+   * @see https://htmx.org/api/#onLoad
+   *
+   * @param {(evt: CustomEvent) => void} callback the callback to call on newly loaded content
    * @returns {EventListener|CustomEventListener}
    */
   function onLoadHelper(callback) {
@@ -758,6 +786,11 @@ var htmx = (function() {
     return value
   }
 
+  /**
+   * Log all htmx events, useful for debugging.
+   *
+   * @see https://htmx.org/api/#logAll
+   */
   function logAll() {
     htmx.logger = function(elt, event, data) {
       if (console) {
@@ -771,12 +804,16 @@ var htmx = (function() {
   }
 
   /**
-   * @param {Element|Document|DocumentFragment|string} eltOrSelector
-   * @param {string} [selector]
+   * Finds an element matching the selector
+   *
+   * @see https://htmx.org/api/#find
+   *
+   * @param {Element|Document|DocumentFragment|string} eltOrSelector  the root element to find the matching element in, inclusive | the selector to match
+   * @param {string} [selector] the selector to match
    * @returns {Element|null}
    */
   function find(eltOrSelector, selector) {
-    if (typeof eltOrSelector !== "string") {
+    if (typeof eltOrSelector !== 'string') {
       return eltOrSelector.querySelector(selector)
     } else {
       return find(getDocument(), eltOrSelector)
@@ -784,12 +821,16 @@ var htmx = (function() {
   }
 
   /**
-   * @param {Element|Document|DocumentFragment|string} eltOrSelector
-   * @param {string} [selector]
+   * Finds all elements matching the selector
+   *
+   * @see https://htmx.org/api/#findAll
+   *
+   * @param {Element|Document|DocumentFragment|string} eltOrSelector the root element to find the matching elements in, inclusive | the selector to match
+   * @param {string} [selector] the selector to match
    * @returns {NodeListOf<Element>}
    */
   function findAll(eltOrSelector, selector) {
-    if (typeof eltOrSelector !== "string") {
+    if (typeof eltOrSelector !== 'string') {
       return eltOrSelector.querySelectorAll(selector)
     } else {
       return findAll(getDocument(), eltOrSelector)
@@ -804,6 +845,10 @@ var htmx = (function() {
   }
 
   /**
+   * Removes an element from the DOM
+   *
+   * @see https://htmx.org/api/#remove
+   *
    * @param {Node} elt
    * @param {number} [delay]
    */
@@ -840,7 +885,7 @@ var htmx = (function() {
    * @return {string|null}
    */
   function asString(value) {
-    return typeof value === "string" ? value : null
+    return typeof value === 'string' ? value : null
   }
 
   /**
@@ -860,12 +905,16 @@ var htmx = (function() {
   }
 
   /**
-   * @param {Node|string} node
-   * @param {string} clazz
-   * @param {number} [delay]
+   * This method adds a class to the given element.
+   *
+   * @see https://htmx.org/api/#addClass
+   *
+   * @param {Element|string} elt the element to add the class to
+   * @param {string} clazz the class to add
+   * @param {number} [delay] the delay (in milliseconds) before class is added
    */
-  function addClassToElement(node, clazz, delay) {
-    let elt = asElement(resolveTarget(node))
+  function addClassToElement(elt, clazz, delay) {
+    elt = asElement(resolveTarget(elt))
     if (!elt) {
       return
     }
@@ -880,9 +929,13 @@ var htmx = (function() {
   }
 
   /**
-   * @param {Node|string} node
-   * @param {string} clazz
-   * @param {number} [delay]
+   * Removes a class from the given element
+   *
+   * @see https://htmx.org/api/#removeClass
+   *
+   * @param {Node|string} node element to remove the class from
+   * @param {string} clazz the class to remove
+   * @param {number} [delay] the delay (in milliseconds before class is removed)
    */
   function removeClassFromElement(node, clazz, delay) {
     let elt = asElement(resolveTarget(node))
@@ -906,8 +959,12 @@ var htmx = (function() {
   }
 
   /**
-   * @param {Element|string} elt
-   * @param {string} clazz
+   * Toggles the given class on an element
+   *
+   * @see https://htmx.org/api/#toggleClass
+   *
+   * @param {Element|string} elt the element to toggle the class on
+   * @param {string} clazz the class to toggle
    */
   function toggleClassOnElement(elt, clazz) {
     elt = resolveTarget(elt)
@@ -915,20 +972,28 @@ var htmx = (function() {
   }
 
   /**
-   * @param {Node|string} elt
-   * @param {string} clazz
+   * Takes the given class from its siblings, so that among its siblings, only the given element will have the class.
+   *
+   * @see https://htmx.org/api/#takeClass
+   *
+   * @param {Node|string} elt the element that will take the class
+   * @param {string} clazz the class to take
    */
   function takeClassForElement(elt, clazz) {
     elt = resolveTarget(elt)
     forEach(elt.parentElement.children, function(child) {
       removeClassFromElement(child, clazz)
     })
-    addClassToElement(elt, clazz)
+    addClassToElement(asElement(elt), clazz)
   }
 
   /**
-   * @param {Element|string} elt
-   * @param {string} selector
+   * Finds the closest matching element in the given elements parentage, inclusive of the element
+   *
+   * @see https://htmx.org/api/#closest
+   *
+   * @param {Element|string} elt the element to find the selector from
+   * @param {string} selector the selector to find
    * @returns {Element|null}
    */
   function closest(elt, selector) {
@@ -1051,7 +1116,7 @@ var htmx = (function() {
    * @returns {Node|Window}
    */
   function querySelectorExt(eltOrSelector, selector) {
-    if (typeof eltOrSelector !== "string") {
+    if (typeof eltOrSelector !== 'string') {
       return querySelectorAllExt(eltOrSelector, selector)[0]
     } else {
       return querySelectorAllExt(getDocument().body, eltOrSelector)[0]
@@ -1065,7 +1130,7 @@ var htmx = (function() {
    * @returns {Element|T|null}
    */
   function resolveTarget(eltOrSelector, context) {
-    if (typeof eltOrSelector === "string") {
+    if (typeof eltOrSelector === 'string') {
       // @ts-ignore
       return find(context || document, eltOrSelector)
     } else {
@@ -1112,13 +1177,13 @@ var htmx = (function() {
   }
 
   /**
-   * @typedef {(evt: CustomEvent) => void} CustomEventListener
-   */
-
-  /**
-   * @param {EventTarget|string} arg1
-   * @param {string|EventListener|CustomEventListener} arg2
-   * @param {EventListener|CustomEventListener} [arg3]
+   * Adds an event listener to an element
+   *
+   * @see https://htmx.org/api/#on
+   *
+   * @param {EventTarget|string} arg1 the element to add the listener to | the event name to add the listener for
+   * @param {string|EventListener|CustomEventListener} arg2 the event name to add the listener for | the listener to add
+   * @param {EventListener|CustomEventListener} [arg3] the listener to add
    * @returns {EventListener|CustomEventListener}
    */
   function addEventListenerImpl(arg1, arg2, arg3) {
@@ -1131,9 +1196,13 @@ var htmx = (function() {
   }
 
   /**
-   * @param {EventTarget|string} arg1
-   * @param {string|EventListener|CustomEventListener} arg2
-   * @param {EventListener|CustomEventListener} [arg3]
+   * Removes an event listener from an element
+   *
+   * @see https://htmx.org/api/#off
+   *
+   * @param {EventTarget|string} arg1 the element to remove the listener from | the event name to remove the listener from
+   * @param {string|EventListener|CustomEventListener} arg2 the event name to remove the listener from | the listener to remove
+   * @param {EventListener|CustomEventListener} [arg3] the listener to remove
    * @returns {EventListener|CustomEventListener}
    */
   function removeEventListenerImpl(arg1, arg2, arg3) {
@@ -1377,7 +1446,7 @@ var htmx = (function() {
     handleAttributes(parentNode, fragment, settleInfo)
     while (fragment.childNodes.length > 0) {
       const child = fragment.firstChild
-      addClassToElement(child, htmx.config.addedClass)
+      addClassToElement(asElement(child), htmx.config.addedClass)
       parentNode.insertBefore(child, insertBefore)
       if (child.nodeType !== Node.TEXT_NODE && child.nodeType !== Node.COMMENT_NODE) {
         settleInfo.tasks.push(makeAjaxLoadTask(child))
@@ -1630,46 +1699,6 @@ var htmx = (function() {
       }
     })
   }
-
-  /**
-   * @callback swapCallback
-   */
-
-  /**
-   * @typedef {Object} SwapOptions
-   * @property {string} [select]
-   * @property {string} [selectOOB]
-   * @property {*} [eventInfo]
-   * @property {string} [anchor]
-   * @property {Element} [contextElement]
-   * @property {swapCallback} [afterSwapCallback]
-   * @property {swapCallback} [afterSettleCallback]
-   */
-
-  /**
-   * @typedef {"innerHTML" | "outerHTML" | "beforebegin" | "afterbegin" | "beforeend" | "afterend" | "delete" | "none" | string} HtmxSwapStyle
-   */
-
-  /**
-   * @typedef HtmxSwapSpecification
-   * @property {HtmxSwapStyle} swapStyle
-   * @property {number} swapDelay
-   * @property {number} settleDelay
-   * @property {boolean} [transition]
-   * @property {boolean} [ignoreTitle]
-   * @property {string} [head]
-   * @property {"top" | "bottom"} [scroll]
-   * @property {string} [scrollTarget]
-   * @property {string} [show]
-   * @property {string} [showTarget]
-   * @property {boolean} [focusScroll]
-   */
-
-  /**
-   * @typedef {DocumentFragment & {title?: string}} DocumentFragmentWithTitle
-   * @description  a document fragment representing the response HTML, including
-   * a `title` property for any title information found
-   */
 
   /**
    * Implements complete swapping pipeline, including: focus and selection preservation,
@@ -1976,23 +2005,6 @@ var htmx = (function() {
   const INPUT_SELECTOR = 'input, textarea, select'
 
   /**
-   * @typedef {Object} HtmxTriggerSpecification
-   * @property {string} trigger
-   * @property {number} [pollInterval]
-   * @property {(this:Node, evt:Event) => boolean} [eventFilter]
-   * @property {boolean} [changed]
-   * @property {boolean} [once]
-   * @property {boolean} [consume]
-   * @property {number} [delay]
-   * @property {string} [from]
-   * @property {string} [target]
-   * @property {number} [throttle]
-   * @property {string} [queue]
-   * @property {string} [root]
-   * @property {string} [threshold]
-   */
-
-  /**
    * @param {Element} elt
    * @param {string} explicitTrigger
    * @param {Object} cache for trigger specs
@@ -2211,9 +2223,9 @@ var htmx = (function() {
    * @returns {boolean}
    */
   function ignoreBoostedAnchorCtrlClick(elt, evt) {
-    return getInternalData(elt).boosted && elt instanceof HTMLAnchorElement && evt.type === 'click'
+    return getInternalData(elt).boosted && elt instanceof HTMLAnchorElement && evt.type === 'click' &&
       // @ts-ignore
-      && (evt.ctrlKey || evt.metaKey)
+      (evt.ctrlKey || evt.metaKey)
   }
 
   /**
@@ -2230,7 +2242,7 @@ var htmx = (function() {
       } catch (e) {
         // @ts-ignore
         const source = eventFilter.source
-        triggerErrorEvent(getDocument().body, 'htmx:eventFilter:error', { error: e, source: source })
+        triggerErrorEvent(getDocument().body, 'htmx:eventFilter:error', { error: e, source })
         return true
       }
     }
@@ -2686,7 +2698,11 @@ var htmx = (function() {
   }
 
   /**
-   * @param {Element|string} elt
+   * Processes new content, enabling htmx behavior. This can be useful if you have content that is added to the DOM outside of the normal htmx request cycle but still want htmx attributes to work.
+   *
+   * @see https://htmx.org/api/#process
+   *
+   * @param {Element|string} elt element to process
    */
   function processNode(elt) {
     elt = resolveTarget(elt)
@@ -2774,9 +2790,13 @@ var htmx = (function() {
   }
 
   /**
-   * @param {EventTarget|string} elt
-   * @param {string} eventName
-   * @param {any=} detail
+   * Triggers a given event on an element
+   *
+   * @see https://htmx.org/api/#trigger
+   *
+   * @param {EventTarget|string} elt the element to trigger the event on
+   * @param {string} eventName the name of the event to trigger
+   * @param {any=} detail details for the event
    * @returns {boolean}
    */
   function triggerEvent(elt, eventName, detail) {
@@ -2817,14 +2837,6 @@ var htmx = (function() {
     const historyElt = getDocument().querySelector('[hx-history-elt],[data-hx-history-elt]')
     return historyElt || getDocument().body
   }
-
-  /**
-   * @typedef {Object} HtmxHistoryItem
-   * @property {string} url
-   * @property {string} content
-   * @property {string} title
-   * @property {number} scroll
-   */
 
   /**
    * @param {string} url
@@ -2877,6 +2889,14 @@ var htmx = (function() {
       }
     }
   }
+
+  /**
+   * @typedef {Object} HtmxHistoryItem
+   * @property {string} url
+   * @property {string} content
+   * @property {string} title
+   * @property {number} scroll
+   */
 
   /**
    * @param {string} url
@@ -3205,10 +3225,6 @@ var htmx = (function() {
   }
 
   /**
-   * @typedef {{elt: Element, message: string, validity: ValidityState}} HtmxElementValidationError
-   */
-
-  /**
    *
    * @param {Element} elt
    * @param {HtmxElementValidationError[]} errors
@@ -3334,19 +3350,6 @@ var htmx = (function() {
   //= ===================================================================
   // Ajax
   //= ===================================================================
-
-  /**
-   * @typedef {Record<string, string>} HtmxHeaderSpecification
-   * @property {'true'} HX-Request
-   * @property {string|null} HX-Trigger
-   * @property {string|null} HX-Trigger-Name
-   * @property {string|null} HX-Target
-   * @property {string} HX-Current-URL
-   * @property {string} [HX-Prompt]
-   * @property {'true'} [HX-Boosted]
-   * @property {string} [Content-Type]
-   * @property {'true'} [HX-History-Restore-Request]
-   */
 
   /**
  * @param {Element} elt
@@ -3691,22 +3694,15 @@ var htmx = (function() {
     return regexp.test(xhr.getAllResponseHeaders())
   }
 
-  /** @typedef HtmxAjaxHelperContext
-   * @property {Element|string} [source]
-   * @property {Event} [event]
-   * @property {HtmxAjaxHandler} [handler]
-   * @property {Element|string} target
-   * @property {string} [swap]
-   * @property {Object|FormData} [values]
-   * @property {Record<string,string>} [headers]
-   * @property {string} [select]
-   */
-
   /**
+   * Issues an htmx-style AJAX request
+   *
+   * @see https://htmx.org/api/#ajax
+   *
    * @param {HttpVerb} verb
-   * @param {string} path
-   * @param {Element|string|HtmxAjaxHelperContext} context
-   * @return {Promise<unknown>}
+   * @param {string} path the URL path to make the AJAX
+   * @param {Element|string|HtmxAjaxHelperContext} context the element to target (defaults to the **body**) | a selector for the target | a context object that contains any of the following
+   * @return {Promise<void>} Promise that resolves immediately if no request is sent, or when the request is complete
    */
   function ajaxHelper(verb, path, context) {
     // @ts-ignore
@@ -3748,24 +3744,6 @@ var htmx = (function() {
     }
     return arr
   }
-
-  /**
-   * @typedef {Object} HtmxRequestConfig
-   * @property {boolean} boosted
-   * @property {boolean} useUrlParams
-   * @property {FormData} formData
-   * @property {Object} parameters formData proxy
-   * @property {FormData} unfilteredFormData
-   * @property {Object} unfilteredParameters unfilteredFormData proxy
-   * @property {HtmxHeaderSpecification} headers
-   * @property {Element} target
-   * @property {HttpVerb} verb
-   * @property {HtmxElementValidationError[]} errors
-   * @property {boolean} withCredentials
-   * @property {number} timeout
-   * @property {string} path
-   * @property {Event} triggeringEvent
-   */
 
   /**
    * @param {Element} elt
@@ -3904,7 +3882,7 @@ var htmx = (function() {
         return true
       },
       deleteProperty: function(target, name) {
-        if (typeof name === "string") {
+        if (typeof name === 'string') {
           target.delete(name)
         }
         return true
@@ -3920,39 +3898,13 @@ var htmx = (function() {
   }
 
   /**
-   * @typedef {Object} HtmxResponseInfo
-   * @property {XMLHttpRequest} xhr
-   * @property {Element} target
-   * @property {HtmxRequestConfig} requestConfig
-   * @property {HtmxAjaxEtc} etc
-   * @property {boolean} boosted
-   * @property {string} select
-   * @property {{requestPath: string, finalRequestPath: string, responsePath: string|null, anchor: string}} pathInfo
-   * @property {boolean} [failed]
-   * @property {boolean} [successful]
-   */
-
-  /**
-   * @typedef {Object} HtmxAjaxEtc
-   * @property {boolean} [returnPromise]
-   * @property {HtmxAjaxHandler} [handler]
-   * @property {string} [select]
-   * @property {Element} [targetOverride]
-   * @property {HtmxSwapStyle} [swapOverride]
-   * @property {Record<string,string>} [headers]
-   * @property {Object|FormData} [values]
-   * @property {boolean} [credentials]
-   * @property {number} [timeout]
-   */
-
-  /**
    * @param {HttpVerb} verb
    * @param {string} path
    * @param {Element} elt
    * @param {Event} event
    * @param {HtmxAjaxEtc} [etc]
    * @param {boolean} [confirmed]
-   * @return {Promise<unknown>}
+   * @return {Promise<void>}
    */
   function issueAjaxRequest(verb, path, elt, event, etc, confirmed) {
     let resolve = null
@@ -4423,18 +4375,6 @@ var htmx = (function() {
   }
 
   /**
-   * @typedef {Object} HtmxResponseHandlingConfig
-   * @property {string} [code]
-   * @property {boolean} swap
-   * @property {boolean} [error]
-   * @property {boolean} [ignoreTitle]
-   * @property {string} [select]
-   * @property {string} [target]
-   * @property {string} [swapOverride]
-   * @property {string} [event]
-   */
-
-  /**
    * @param {HtmxResponseHandlingConfig} responseHandlingConfig
    * @param {number} status
    * @return {boolean}
@@ -4475,21 +4415,6 @@ var htmx = (function() {
       }
     }
   }
-
-  /**
-   * @typedef {HtmxResponseInfo} HtmxBeforeSwapDetails
-   * @property {boolean} shouldSwap
-   * @property {any} serverResponse
-   * @property {boolean} isError
-   * @property {boolean} ignoreTitle
-   * @property {string} selectOverride
-   */
-
-  /**
-   * @callback HtmxAjaxHandler
-   * @param {Element} elt
-   * @param {HtmxResponseInfo} responseInfo
-   */
 
   /**
    * @param {Element} elt
@@ -4573,6 +4498,7 @@ var htmx = (function() {
     }
 
     var serverResponse = xhr.response
+    /** @type HtmxBeforeSwapDetails */
     var beforeSwapDetails = mergeObjects({
       shouldSwap,
       serverResponse,
@@ -4722,35 +4648,13 @@ var htmx = (function() {
   // Extensions API
   //= ===================================================================
 
-  /**
-   * @typedef {(() => void)} HtmxSettleTask
-   */
-
-  /**
-   * @typedef {Object} HtmxSettleInfo
-   * @property {HtmxSettleTask[]} tasks
-   * @property {Element[]} elts
-   * @property {string} [title]
-   */
-
-  /**
-   * @typedef {Object} HtmxExtension
-   * @see https://htmx.org/extensions/#defining
-   * @property {(api: any) => void} init
-   * @property {(name: string, event: Event|CustomEvent) => boolean} onEvent
-   * @property {(text: string, xhr: XMLHttpRequest, elt: Element) => string} transformResponse
-   * @property {(swapStyle: HtmxSwapStyle) => boolean} isInlineSwap
-   * @property {(swapStyle: HtmxSwapStyle, target: Element, fragment: Node, settleInfo: HtmxSettleInfo) => boolean} handleSwap
-   * @property {(xhr: XMLHttpRequest, parameters: FormData, elt: Element) => *|string|null} encodeParameters
-   */
-
   /** @type {Object<string, HtmxExtension>} */
   const extensions = {}
 
   /**
- * extensionBase defines the default functions for all extensions.
- * @returns {HtmxExtension}
- */
+   * extensionBase defines the default functions for all extensions.
+   * @returns {HtmxExtension}
+   */
   function extensionBase() {
     return {
       init: function(api) { return null },
@@ -4763,11 +4667,13 @@ var htmx = (function() {
   }
 
   /**
- * defineExtension initializes the extension and adds it to the htmx registry
- *
- * @param {string} name
- * @param {HtmxExtension} extension
- */
+   * defineExtension initializes the extension and adds it to the htmx registry
+   *
+   * @see https://htmx.org/api/#defineExtension
+   *
+   * @param {string} name the extension name
+   * @param {HtmxExtension} extension the extension definition
+   */
   function defineExtension(name, extension) {
     if (extension.init) {
       extension.init(internalAPI)
@@ -4776,10 +4682,12 @@ var htmx = (function() {
   }
 
   /**
- * removeExtension removes an extension from the htmx registry
- *
- * @param {string} name
- */
+   * removeExtension removes an extension from the htmx registry
+   *
+   * @see https://htmx.org/api/#removeExtension
+   *
+   * @param {string} name
+   */
   function removeExtension(name) {
     delete extensions[name]
   }
@@ -4916,3 +4824,176 @@ var htmx = (function() {
 
   return htmx
 })()
+
+/** @typedef {'get'|'head'|'post'|'put'|'delete'|'connect'|'options'|'trace'|'patch'} HttpVerb */
+
+/**
+ * @typedef {(evt: CustomEvent) => void} CustomEventListener
+ */
+
+/**
+ * @typedef {Object} SwapOptions
+ * @property {string} [select]
+ * @property {string} [selectOOB]
+ * @property {*} [eventInfo]
+ * @property {string} [anchor]
+ * @property {Element} [contextElement]
+ * @property {swapCallback} [afterSwapCallback]
+ * @property {swapCallback} [afterSettleCallback]
+ */
+
+/**
+ * @callback swapCallback
+ */
+
+/**
+ * @typedef {'innerHTML' | 'outerHTML' | 'beforebegin' | 'afterbegin' | 'beforeend' | 'afterend' | 'delete' | 'none' | string} HtmxSwapStyle
+ */
+
+/**
+ * @typedef HtmxSwapSpecification
+ * @property {HtmxSwapStyle} swapStyle
+ * @property {number} swapDelay
+ * @property {number} settleDelay
+ * @property {boolean} [transition]
+ * @property {boolean} [ignoreTitle]
+ * @property {string} [head]
+ * @property {'top' | 'bottom'} [scroll]
+ * @property {string} [scrollTarget]
+ * @property {string} [show]
+ * @property {string} [showTarget]
+ * @property {boolean} [focusScroll]
+ */
+
+/**
+ * @typedef {Object} HtmxTriggerSpecification
+ * @property {string} trigger
+ * @property {number} [pollInterval]
+ * @property {(this:Node, evt:Event) => boolean} [eventFilter]
+ * @property {boolean} [changed]
+ * @property {boolean} [once]
+ * @property {boolean} [consume]
+ * @property {number} [delay]
+ * @property {string} [from]
+ * @property {string} [target]
+ * @property {number} [throttle]
+ * @property {string} [queue]
+ * @property {string} [root]
+ * @property {string} [threshold]
+ */
+
+/**
+ * @typedef {{elt: Element, message: string, validity: ValidityState}} HtmxElementValidationError
+ */
+
+/**
+ * @typedef {Record<string, string>} HtmxHeaderSpecification
+ * @property {'true'} HX-Request
+ * @property {string|null} HX-Trigger
+ * @property {string|null} HX-Trigger-Name
+ * @property {string|null} HX-Target
+ * @property {string} HX-Current-URL
+ * @property {string} [HX-Prompt]
+ * @property {'true'} [HX-Boosted]
+ * @property {string} [Content-Type]
+ * @property {'true'} [HX-History-Restore-Request]
+ */
+
+/** @typedef HtmxAjaxHelperContext
+ * @property {Element|string} [source]
+ * @property {Event} [event]
+ * @property {HtmxAjaxHandler} [handler]
+ * @property {Element|string} target
+ * @property {string} [swap]
+ * @property {Object|FormData} [values]
+ * @property {Record<string,string>} [headers]
+ * @property {string} [select]
+ */
+
+/**
+ * @typedef {Object} HtmxRequestConfig
+ * @property {boolean} boosted
+ * @property {boolean} useUrlParams
+ * @property {FormData} formData
+ * @property {Object} parameters formData proxy
+ * @property {FormData} unfilteredFormData
+ * @property {Object} unfilteredParameters unfilteredFormData proxy
+ * @property {HtmxHeaderSpecification} headers
+ * @property {Element} target
+ * @property {HttpVerb} verb
+ * @property {HtmxElementValidationError[]} errors
+ * @property {boolean} withCredentials
+ * @property {number} timeout
+ * @property {string} path
+ * @property {Event} triggeringEvent
+ */
+
+/**
+ * @typedef {Object} HtmxResponseInfo
+ * @property {XMLHttpRequest} xhr
+ * @property {Element} target
+ * @property {HtmxRequestConfig} requestConfig
+ * @property {HtmxAjaxEtc} etc
+ * @property {boolean} boosted
+ * @property {string} select
+ * @property {{requestPath: string, finalRequestPath: string, responsePath: string|null, anchor: string}} pathInfo
+ * @property {boolean} [failed]
+ * @property {boolean} [successful]
+ */
+
+/**
+ * @typedef {Object} HtmxAjaxEtc
+ * @property {boolean} [returnPromise]
+ * @property {HtmxAjaxHandler} [handler]
+ * @property {string} [select]
+ * @property {Element} [targetOverride]
+ * @property {HtmxSwapStyle} [swapOverride]
+ * @property {Record<string,string>} [headers]
+ * @property {Object|FormData} [values]
+ * @property {boolean} [credentials]
+ * @property {number} [timeout]
+ */
+
+/**
+ * @typedef {Object} HtmxResponseHandlingConfig
+ * @property {string} [code]
+ * @property {boolean} swap
+ * @property {boolean} [error]
+ * @property {boolean} [ignoreTitle]
+ * @property {string} [select]
+ * @property {string} [target]
+ * @property {string} [swapOverride]
+ * @property {string} [event]
+ */
+
+/**
+ * @typedef {HtmxResponseInfo & {shouldSwap: boolean, serverResponse: any, isError: boolean, ignoreTitle: boolean, selectOverride:string}} HtmxBeforeSwapDetails
+ */
+
+/**
+ * @callback HtmxAjaxHandler
+ * @param {Element} elt
+ * @param {HtmxResponseInfo} responseInfo
+ */
+
+/**
+ * @typedef {(() => void)} HtmxSettleTask
+ */
+
+/**
+ * @typedef {Object} HtmxSettleInfo
+ * @property {HtmxSettleTask[]} tasks
+ * @property {Element[]} elts
+ * @property {string} [title]
+ */
+
+/**
+ * @typedef {Object} HtmxExtension
+ * @see https://htmx.org/extensions/#defining
+ * @property {(api: any) => void} init
+ * @property {(name: string, event: Event|CustomEvent) => boolean} onEvent
+ * @property {(text: string, xhr: XMLHttpRequest, elt: Element) => string} transformResponse
+ * @property {(swapStyle: HtmxSwapStyle) => boolean} isInlineSwap
+ * @property {(swapStyle: HtmxSwapStyle, target: Element, fragment: Node, settleInfo: HtmxSettleInfo) => boolean} handleSwap
+ * @property {(xhr: XMLHttpRequest, parameters: FormData, elt: Element) => *|string|null} encodeParameters
+ */
