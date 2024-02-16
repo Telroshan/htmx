@@ -9,6 +9,7 @@
     "checkJs": true,
     "jsx": "react",
     "strict": false,
+    "removeComments": false,
     "lib": [
       "dom",
       "dom.iterable"

@@ -6,16 +6,201 @@ var htmx = (function() {
   // Public API
   const htmx = {
     /* Event processing */
-    onLoad: onLoadHelper,
-    process: processNode,
-    on: addEventListenerImpl,
-    off: removeEventListenerImpl,
-    trigger: triggerEvent,
-    ajax: ajaxHelper,
+    /**
+     * Adds a callback for the **htmx:load** event. This can be used to process new content, for example initializing the content with a javascript library
+     *
+     * @see https://htmx.org/api/#onLoad
+     *
+     * @param {(evt: CustomEvent) => void} callback the callback to call on newly loaded content
+     * @returns {EventListener|CustomEventListener}
+     */
+    onLoad: function(callback) {
+      const value = htmx.on('htmx:load', function(evt) {
+        callback(evt.detail.elt)
+      })
+      return value
+    },
+    /**
+     * Processes new content, enabling htmx behavior. This can be useful if you have content that is added to the DOM outside of the normal htmx request cycle but still want htmx attributes to work.
+     *
+     * @see https://htmx.org/api/#process
+     *
+     * @param {Element|string} elt element to process
+     */
+    process: function(elt) {
+      elt = resolveTarget(elt)
+      if (htmx.closest(elt, htmx.config.disableSelector)) {
+        cleanUpElement(elt)
+        return
+      }
+      initNode(elt)
+      forEach(findElementsToProcess(elt), function(child) { initNode(child) })
+      forEach(findHxOnWildcardElements(elt), processHxOnWildcard)
+    },
+    /**
+     * Adds an event listener to an element
+     *
+     * @see https://htmx.org/api/#on
+     *
+     * @param {EventTarget|string} arg1 the element to add the listener to | the event name to add the listener for
+     * @param {string|EventListener|CustomEventListener} arg2 the event name to add the listener for | the listener to add
+     * @param {EventListener|CustomEventListener} [arg3] the listener to add
+     * @returns {EventListener|CustomEventListener}
+     */
+    on: function on(arg1, arg2, arg3) {
+      ready(function() {
+        const eventArgs = processEventArgs(arg1, arg2, arg3)
+        eventArgs.target.addEventListener(eventArgs.event, eventArgs.listener)
+      })
+      const b = isFunction(arg2)
+      return b ? arg2 : arg3
+    },
+    /**
+     * Removes an event listener from an element
+     *
+     * @see https://htmx.org/api/#off
+     *
+     * @param {EventTarget|string} arg1 the element to remove the listener from | the event name to remove the listener from
+     * @param {string|EventListener|CustomEventListener} arg2 the event name to remove the listener from | the listener to remove
+     * @param {EventListener|CustomEventListener} [arg3] the listener to remove
+     * @returns {EventListener|CustomEventListener}
+     */
+    off: function(arg1, arg2, arg3) {
+      ready(function() {
+        const eventArgs = processEventArgs(arg1, arg2, arg3)
+        eventArgs.target.removeEventListener(eventArgs.event, eventArgs.listener)
+      })
+      return isFunction(arg2) ? arg2 : arg3
+    },
+    /**
+     * Triggers a given event on an element
+     *
+     * @see https://htmx.org/api/#trigger
+     *
+     * @param {EventTarget|string} elt the element to trigger the event on
+     * @param {string} eventName the name of the event to trigger
+     * @param {any=} detail details for the event
+     * @returns {boolean}
+     */
+    trigger: function(elt, eventName, detail) {
+      elt = resolveTarget(elt)
+      if (detail == null) {
+        detail = {}
+      }
+      detail.elt = elt
+      const event = makeEvent(eventName, detail)
+      if (htmx.logger && !ignoreEventForLogging(eventName)) {
+        htmx.logger(elt, eventName, detail)
+      }
+      if (detail.error) {
+        logError(detail.error)
+        htmx.trigger(elt, 'htmx:error', { errorInfo: detail })
+      }
+      let eventResult = elt.dispatchEvent(event)
+      const kebabName = kebabEventName(eventName)
+      if (eventResult && kebabName !== eventName) {
+        const kebabedEvent = makeEvent(kebabName, event.detail)
+        eventResult = eventResult && elt.dispatchEvent(kebabedEvent)
+      }
+      withExtensions(asElement(elt), function(extension) {
+        eventResult = eventResult && (extension.onEvent(eventName, event) !== false && !event.defaultPrevented)
+      })
+      return eventResult
+    },
+    /**
+     * Issues an htmx-style AJAX request
+     *
+     * @see https://htmx.org/api/#ajax
+     *
+     * @param {HttpVerb} verb
+     * @param {string} path the URL path to make the AJAX
+     * @param {Element|string|HtmxAjaxHelperContext} context the element to target (defaults to the **body**) | a selector for the target | a context object that contains any of the following
+     * @return {Promise<void>} Promise that resolves immediately if no request is sent, or when the request is complete
+     */
+    ajax: function(verb, path, context) {
+      // @ts-ignore
+      verb = verb.toLowerCase()
+      if (context) {
+        if (context instanceof Element || typeof context === 'string') {
+          return issueAjaxRequest(verb, path, null, null, {
+            targetOverride: resolveTarget(context),
+            returnPromise: true
+          })
+        } else {
+          return issueAjaxRequest(verb, path, resolveTarget(context.source), context.event,
+            {
+              handler: context.handler,
+              headers: context.headers,
+              values: context.values,
+              targetOverride: resolveTarget(context.target),
+              swapOverride: context.swap,
+              select: context.select,
+              returnPromise: true
+            })
+        }
+      } else {
+        return issueAjaxRequest(verb, path, null, null, {
+          returnPromise: true
+        })
+      }
+    },
     /* DOM querying helpers */
-    find,
-    findAll,
-    closest,
+    /**
+     * Finds an element matching the selector
+     *
+     * @see https://htmx.org/api/#find
+     *
+     * @param {Element|Document|DocumentFragment|string} eltOrSelector  the root element to find the matching element in, inclusive | the selector to match
+     * @param {string} [selector] the selector to match
+     * @returns {Element|null}
+     */
+    find: function(eltOrSelector, selector) {
+      if (typeof eltOrSelector !== 'string') {
+        return eltOrSelector.querySelector(selector)
+      } else {
+        return htmx.find(getDocument(), eltOrSelector)
+      }
+    },
+    /**
+     * Finds all elements matching the selector
+     *
+     * @see https://htmx.org/api/#findAll
+     *
+     * @param {Element|Document|DocumentFragment|string} eltOrSelector the root element to find the matching elements in, inclusive | the selector to match
+     * @param {string} [selector] the selector to match
+     * @returns {NodeListOf<Element>}
+     */
+    findAll: function(eltOrSelector, selector) {
+      if (typeof eltOrSelector !== 'string') {
+        return eltOrSelector.querySelectorAll(selector)
+      } else {
+        return htmx.findAll(getDocument(), eltOrSelector)
+      }
+    },
+    /**
+     * Finds the closest matching element in the given elements parentage, inclusive of the element
+     *
+     * @see https://htmx.org/api/#closest
+     *
+     * @param {Element|string} elt the element to find the selector from
+     * @param {string} selector the selector to find
+     * @returns {Element|null}
+     */
+    closest: function(elt, selector) {
+      elt = asElement(resolveTarget(elt))
+      if (elt && elt.closest) {
+        return elt.closest(selector)
+      } else {
+        // TODO remove when IE goes away
+        do {
+          if (elt == null || matches(elt, selector)) {
+            return elt
+          }
+        }
+        while (elt = elt && asElement(parentElt(elt)))
+        return null
+      }
+    },
     /**
      * Returns the input values that would resolve for a given element via the htmx value resolution mechanism
      *
@@ -30,18 +215,284 @@ var htmx = (function() {
       return inputValues.values
     },
     /* DOM manipulation helpers */
-    remove: removeElement,
-    addClass: addClassToElement,
-    removeClass: removeClassFromElement,
-    toggleClass: toggleClassOnElement,
-    takeClass: takeClassForElement,
-    swap,
+    /**
+     * Removes an element from the DOM
+     *
+     * @see https://htmx.org/api/#remove
+     *
+     * @param {Node} elt
+     * @param {number} [delay]
+     */
+    remove: function(elt, delay) {
+      elt = resolveTarget(elt)
+      if (delay) {
+        getWindow().setTimeout(function() {
+          htmx.remove(elt)
+          elt = null
+        }, delay)
+      } else {
+        parentElt(elt).removeChild(elt)
+      }
+    },
+    /**
+     * This method adds a class to the given element.
+     *
+     * @see https://htmx.org/api/#addClass
+     *
+     * @param {Element|string} elt the element to add the class to
+     * @param {string} clazz the class to add
+     * @param {number} [delay] the delay (in milliseconds) before class is added
+     */
+    addClass: function(elt, clazz, delay) {
+      elt = asElement(resolveTarget(elt))
+      if (!elt) {
+        return
+      }
+      if (delay) {
+        getWindow().setTimeout(function() {
+          htmx.addClass(elt, clazz)
+          elt = null
+        }, delay)
+      } else {
+        elt.classList && elt.classList.add(clazz)
+      }
+    },
+    /**
+     * Removes a class from the given element
+     *
+     * @see https://htmx.org/api/#removeClass
+     *
+     * @param {Node|string} node element to remove the class from
+     * @param {string} clazz the class to remove
+     * @param {number} [delay] the delay (in milliseconds before class is removed)
+     */
+    removeClass: function(node, clazz, delay) {
+      let elt = asElement(resolveTarget(node))
+      if (!elt) {
+        return
+      }
+      if (delay) {
+        getWindow().setTimeout(function() {
+          htmx.removeClass(elt, clazz)
+          elt = null
+        }, delay)
+      } else {
+        if (elt.classList) {
+          elt.classList.remove(clazz)
+          // if there are no classes left, remove the class attribute
+          if (elt.classList.length === 0) {
+            elt.removeAttribute('class')
+          }
+        }
+      }
+    },
+    /**
+     * Toggles the given class on an element
+     *
+     * @see https://htmx.org/api/#toggleClass
+     *
+     * @param {Element|string} elt the element to toggle the class on
+     * @param {string} clazz the class to toggle
+     */
+    toggleClass: function(elt, clazz) {
+      elt = resolveTarget(elt)
+      elt.classList.toggle(clazz)
+    },
+    /**
+     * Takes the given class from its siblings, so that among its siblings, only the given element will have the class.
+     *
+     * @see https://htmx.org/api/#takeClass
+     *
+     * @param {Node|string} elt the element that will take the class
+     * @param {string} clazz the class to take
+     */
+    takeClass: function(elt, clazz) {
+      elt = resolveTarget(elt)
+      forEach(elt.parentElement.children, function(child) {
+        htmx.removeClass(child, clazz)
+      })
+      htmx.addClass(asElement(elt), clazz)
+    },
+    /**
+     * Implements complete swapping pipeline, including: focus and selection preservation,
+     * title updates, scroll, OOB swapping, normal swapping and settling
+     * @param {string|Element} target
+     * @param {string} content
+     * @param {HtmxSwapSpecification} swapSpec
+     * @param {SwapOptions} [swapOptions]
+     */
+    swap: function(target, content, swapSpec, swapOptions) {
+      if (!swapOptions) {
+        swapOptions = {}
+      }
+
+      target = resolveTarget(target)
+
+      // preserve focus and selection
+      const activeElt = document.activeElement
+      let selectionInfo = {}
+      try {
+        selectionInfo = {
+          elt: activeElt,
+          // @ts-ignore
+          start: activeElt ? activeElt.selectionStart : null,
+          // @ts-ignore
+          end: activeElt ? activeElt.selectionEnd : null
+        }
+      } catch (e) {
+        // safari issue - see https://github.com/microsoft/playwright/issues/5894
+      }
+      const settleInfo = makeSettleInfo(target)
+
+      let fragment = makeFragment(content)
+
+      settleInfo.title = fragment.title
+
+      // select-oob swaps
+      if (swapOptions.selectOOB) {
+        const oobSelectValues = swapOptions.selectOOB.split(',')
+        for (let i = 0; i < oobSelectValues.length; i++) {
+          const oobSelectValue = oobSelectValues[i].split(':', 2)
+          let id = oobSelectValue[0].trim()
+          if (id.indexOf('#') === 0) {
+            id = id.substring(1)
+          }
+          const oobValue = oobSelectValue[1] || 'true'
+          const oobElement = fragment.querySelector('#' + id)
+          if (oobElement) {
+            oobSwap(oobValue, oobElement, settleInfo)
+          }
+        }
+      }
+      // oob swaps
+      findAndSwapOobElements(fragment, settleInfo)
+      forEach(htmx.findAll(fragment, 'template'), /** @param {HTMLTemplateElement} template */function(template) {
+        findAndSwapOobElements(template.content, settleInfo)
+        if (template.content.childElementCount === 0) {
+          // Avoid polluting the DOM with empty templates that were only used to encapsulate oob swap
+          template.remove()
+        }
+      })
+
+      // normal swap
+      if (swapOptions.select) {
+        const newFragment = getDocument().createDocumentFragment()
+        forEach(fragment.querySelectorAll(swapOptions.select), function(node) {
+          newFragment.appendChild(node)
+        })
+        fragment = newFragment
+      }
+      handlePreservedElements(fragment)
+      swapWithStyle(swapSpec.swapStyle, swapOptions.contextElement, target, fragment, settleInfo)
+
+      // apply saved focus and selection information to swapped content
+      if (selectionInfo.elt &&
+              !bodyContains(selectionInfo.elt) &&
+              getRawAttribute(selectionInfo.elt, 'id')) {
+        const newActiveElt = document.getElementById(getRawAttribute(selectionInfo.elt, 'id'))
+        const focusOptions = { preventScroll: swapSpec.focusScroll !== undefined ? !swapSpec.focusScroll : !htmx.config.defaultFocusScroll }
+        if (newActiveElt) {
+          // @ts-ignore
+          if (selectionInfo.start && newActiveElt.setSelectionRange) {
+            try {
+              // @ts-ignore
+              newActiveElt.setSelectionRange(selectionInfo.start, selectionInfo.end)
+            } catch (e) {
+              // the setSelectionRange method is present on fields that don't support it, so just let this fail
+            }
+          }
+          newActiveElt.focus(focusOptions)
+        }
+      }
+
+      target.classList.remove(htmx.config.swappingClass)
+      forEach(settleInfo.elts, function(elt) {
+        if (elt.classList) {
+          elt.classList.add(htmx.config.settlingClass)
+        }
+        htmx.trigger(elt, 'htmx:afterSwap', swapOptions.eventInfo)
+      })
+      if (swapOptions.afterSwapCallback) {
+        swapOptions.afterSwapCallback()
+      }
+
+      // merge in new title after swap but before settle
+      if (!swapSpec.ignoreTitle) {
+        handleTitle(settleInfo.title)
+      }
+
+      // settle
+      const doSettle = function() {
+        forEach(settleInfo.tasks, function(task) {
+          task.call()
+        })
+        forEach(settleInfo.elts, function(elt) {
+          if (elt.classList) {
+            elt.classList.remove(htmx.config.settlingClass)
+          }
+          htmx.trigger(elt, 'htmx:afterSettle', swapOptions.eventInfo)
+        })
+
+        if (swapOptions.anchor) {
+          const anchorTarget = asElement(resolveTarget('#' + swapOptions.anchor))
+          if (anchorTarget) {
+            anchorTarget.scrollIntoView({ block: 'start', behavior: 'auto' })
+          }
+        }
+
+        updateScrollState(settleInfo.elts, swapSpec)
+        if (swapOptions.afterSettleCallback) {
+          swapOptions.afterSettleCallback()
+        }
+      }
+
+      if (swapSpec.settleDelay > 0) {
+        getWindow().setTimeout(doSettle, swapSpec.settleDelay)
+      } else {
+        doSettle()
+      }
+    },
     /* Extension entrypoints */
-    defineExtension,
-    removeExtension,
+    /**
+     * defineExtension initializes the extension and adds it to the htmx registry
+     *
+     * @see https://htmx.org/api/#defineExtension
+     *
+     * @param {string} name the extension name
+     * @param {HtmxExtension} extension the extension definition
+     */
+    defineExtension: function(name, extension) {
+      if (extension.init) {
+        extension.init(internalAPI)
+      }
+      extensions[name] = mergeObjects(extensionBase(), extension)
+    },
+    /**
+     * removeExtension removes an extension from the htmx registry
+     *
+     * @see https://htmx.org/api/#removeExtension
+     *
+     * @param {string} name
+     */
+    removeExtension: function(name) {
+      delete extensions[name]
+    },
     /* Debugging */
-    logAll,
-    logNone,
+    /**
+     * Log all htmx events, useful for debugging.
+     *
+     * @see https://htmx.org/api/#logAll
+     */
+    logAll: function() {
+      htmx.logger = function(elt, event, data) {
+        if (console) {
+          console.log(event, elt, data)
+        }
+      }
+    },
+    logNone: function() {
+      htmx.logger = null
+    },
     /**
      * The logger htmx uses to log with
      *
@@ -242,8 +693,42 @@ var htmx = (function() {
         { code: '[45]..', swap: false, error: true }
       ]
     },
-    parseInterval,
-    _: internalEval,
+    /**
+     * Parses an interval string consistent with the way htmx does. Useful for plugins that have timing-related attributes.
+     *
+     * Caution: Accepts an int followed by either **s** or **ms**. All other values use **parseFloat**
+     *
+     * @see https://htmx.org/api/#parseInterval
+     *
+     * @param {string} str timing string
+     * @returns {number|undefined}
+     */
+    parseInterval: function(str) {
+      if (str == undefined) {
+        return undefined
+      }
+
+      let interval = NaN
+      if (str.slice(-2) == 'ms') {
+        interval = parseFloat(str.slice(0, -2))
+      } else if (str.slice(-1) == 's') {
+        interval = parseFloat(str.slice(0, -1)) * 1000
+      } else if (str.slice(-1) == 'm') {
+        interval = parseFloat(str.slice(0, -1)) * 1000 * 60
+      } else {
+        interval = parseFloat(str)
+      }
+      return isNaN(interval) ? undefined : interval
+    },
+    /**
+     * @param {string} str
+     * @returns {any}
+     */
+    _: function(str) {
+      return maybeEval(getDocument().body, function() {
+        return eval(str)
+      })
+    },
     version: '2.0a'
   }
 
@@ -253,7 +738,7 @@ var htmx = (function() {
     canAccessLocalStorage,
     findThisElement,
     filterValues,
-    swap,
+    swap: htmx.swap,
     hasAttribute,
     getAttributeValue,
     getClosestAttributeValue,
@@ -272,7 +757,7 @@ var htmx = (function() {
     querySelectorExt,
     settleImmediately,
     shouldCancel,
-    triggerEvent,
+    triggerEvent: htmx.trigger,
     triggerErrorEvent,
     withExtensions
   }
@@ -296,34 +781,6 @@ var htmx = (function() {
   function makeTagRegEx(tag, global = false) {
     return new RegExp(`<${tag}(\\s[^>]*>|>)([\\s\\S]*?)<\\/${tag}>`,
       global ? 'gim' : 'im')
-  }
-
-  /**
-   * Parses an interval string consistent with the way htmx does. Useful for plugins that have timing-related attributes.
-   *
-   * Caution: Accepts an int followed by either **s** or **ms**. All other values use **parseFloat**
-   *
-   * @see https://htmx.org/api/#parseInterval
-   *
-   * @param {string} str timing string
-   * @returns {number|undefined}
-   */
-  function parseInterval(str) {
-    if (str == undefined) {
-      return undefined
-    }
-
-    let interval = NaN
-    if (str.slice(-2) == 'ms') {
-      interval = parseFloat(str.slice(0, -2))
-    } else if (str.slice(-1) == 's') {
-      interval = parseFloat(str.slice(0, -1)) * 1000
-    } else if (str.slice(-1) == 'm') {
-      interval = parseFloat(str.slice(0, -1)) * 1000 * 60
-    } else {
-      interval = parseFloat(str)
-    }
-    return isNaN(interval) ? undefined : interval
   }
 
   /**
@@ -805,106 +1262,10 @@ var htmx = (function() {
   //= =========================================================================================
 
   /**
-   * @param {string} str
-   * @returns {any}
-   */
-  function internalEval(str) {
-    return maybeEval(getDocument().body, function() {
-      return eval(str)
-    })
-  }
-
-  /**
-   * Adds a callback for the **htmx:load** event. This can be used to process new content, for example initializing the content with a javascript library
-   *
-   * @see https://htmx.org/api/#onLoad
-   *
-   * @param {(evt: CustomEvent) => void} callback the callback to call on newly loaded content
-   * @returns {EventListener|CustomEventListener}
-   */
-  function onLoadHelper(callback) {
-    const value = htmx.on('htmx:load', function(evt) {
-      callback(evt.detail.elt)
-    })
-    return value
-  }
-
-  /**
-   * Log all htmx events, useful for debugging.
-   *
-   * @see https://htmx.org/api/#logAll
-   */
-  function logAll() {
-    htmx.logger = function(elt, event, data) {
-      if (console) {
-        console.log(event, elt, data)
-      }
-    }
-  }
-
-  function logNone() {
-    htmx.logger = null
-  }
-
-  /**
-   * Finds an element matching the selector
-   *
-   * @see https://htmx.org/api/#find
-   *
-   * @param {Element|Document|DocumentFragment|string} eltOrSelector  the root element to find the matching element in, inclusive | the selector to match
-   * @param {string} [selector] the selector to match
-   * @returns {Element|null}
-   */
-  function find(eltOrSelector, selector) {
-    if (typeof eltOrSelector !== 'string') {
-      return eltOrSelector.querySelector(selector)
-    } else {
-      return find(getDocument(), eltOrSelector)
-    }
-  }
-
-  /**
-   * Finds all elements matching the selector
-   *
-   * @see https://htmx.org/api/#findAll
-   *
-   * @param {Element|Document|DocumentFragment|string} eltOrSelector the root element to find the matching elements in, inclusive | the selector to match
-   * @param {string} [selector] the selector to match
-   * @returns {NodeListOf<Element>}
-   */
-  function findAll(eltOrSelector, selector) {
-    if (typeof eltOrSelector !== 'string') {
-      return eltOrSelector.querySelectorAll(selector)
-    } else {
-      return findAll(getDocument(), eltOrSelector)
-    }
-  }
-
-  /**
    * @returns Window
    */
   function getWindow() {
     return window
-  }
-
-  /**
-   * Removes an element from the DOM
-   *
-   * @see https://htmx.org/api/#remove
-   *
-   * @param {Node} elt
-   * @param {number} [delay]
-   */
-  function removeElement(elt, delay) {
-    elt = resolveTarget(elt)
-    if (delay) {
-      getWindow().setTimeout(function() {
-        removeElement(elt)
-        elt = null
-      }, delay)
-    } else {
-      parentElt(elt).removeChild(elt)
-    }
   }
 
   /**
@@ -941,114 +1302,6 @@ var htmx = (function() {
    */
   function asQueryable(elt) {
     return elt instanceof Element || elt instanceof Document || elt instanceof DocumentFragment ? elt : null
-  }
-
-  /**
-   * This method adds a class to the given element.
-   *
-   * @see https://htmx.org/api/#addClass
-   *
-   * @param {Element|string} elt the element to add the class to
-   * @param {string} clazz the class to add
-   * @param {number} [delay] the delay (in milliseconds) before class is added
-   */
-  function addClassToElement(elt, clazz, delay) {
-    elt = asElement(resolveTarget(elt))
-    if (!elt) {
-      return
-    }
-    if (delay) {
-      getWindow().setTimeout(function() {
-        addClassToElement(elt, clazz)
-        elt = null
-      }, delay)
-    } else {
-      elt.classList && elt.classList.add(clazz)
-    }
-  }
-
-  /**
-   * Removes a class from the given element
-   *
-   * @see https://htmx.org/api/#removeClass
-   *
-   * @param {Node|string} node element to remove the class from
-   * @param {string} clazz the class to remove
-   * @param {number} [delay] the delay (in milliseconds before class is removed)
-   */
-  function removeClassFromElement(node, clazz, delay) {
-    let elt = asElement(resolveTarget(node))
-    if (!elt) {
-      return
-    }
-    if (delay) {
-      getWindow().setTimeout(function() {
-        removeClassFromElement(elt, clazz)
-        elt = null
-      }, delay)
-    } else {
-      if (elt.classList) {
-        elt.classList.remove(clazz)
-        // if there are no classes left, remove the class attribute
-        if (elt.classList.length === 0) {
-          elt.removeAttribute('class')
-        }
-      }
-    }
-  }
-
-  /**
-   * Toggles the given class on an element
-   *
-   * @see https://htmx.org/api/#toggleClass
-   *
-   * @param {Element|string} elt the element to toggle the class on
-   * @param {string} clazz the class to toggle
-   */
-  function toggleClassOnElement(elt, clazz) {
-    elt = resolveTarget(elt)
-    elt.classList.toggle(clazz)
-  }
-
-  /**
-   * Takes the given class from its siblings, so that among its siblings, only the given element will have the class.
-   *
-   * @see https://htmx.org/api/#takeClass
-   *
-   * @param {Node|string} elt the element that will take the class
-   * @param {string} clazz the class to take
-   */
-  function takeClassForElement(elt, clazz) {
-    elt = resolveTarget(elt)
-    forEach(elt.parentElement.children, function(child) {
-      removeClassFromElement(child, clazz)
-    })
-    addClassToElement(asElement(elt), clazz)
-  }
-
-  /**
-   * Finds the closest matching element in the given elements parentage, inclusive of the element
-   *
-   * @see https://htmx.org/api/#closest
-   *
-   * @param {Element|string} elt the element to find the selector from
-   * @param {string} selector the selector to find
-   * @returns {Element|null}
-   */
-  function closest(elt, selector) {
-    elt = asElement(resolveTarget(elt))
-    if (elt && elt.closest) {
-      return elt.closest(selector)
-    } else {
-      // TODO remove when IE goes away
-      do {
-        if (elt == null || matches(elt, selector)) {
-          return elt
-        }
-      }
-      while (elt = elt && asElement(parentElt(elt)))
-      return null
-    }
   }
 
   /**
@@ -1091,9 +1344,9 @@ var htmx = (function() {
   function querySelectorAllExt(elt, selector, global) {
     elt = resolveTarget(elt)
     if (selector.indexOf('closest ') === 0) {
-      return [closest(asElement(elt), normalizeSelector(selector.substr(8)))]
+      return [htmx.closest(asElement(elt), normalizeSelector(selector.substr(8)))]
     } else if (selector.indexOf('find ') === 0) {
-      return [find(asQueryable(elt), normalizeSelector(selector.substr(5)))]
+      return [htmx.find(asQueryable(elt), normalizeSelector(selector.substr(5)))]
     } else if (selector === 'next') {
       return [asElement(elt).nextElementSibling]
     } else if (selector.indexOf('next ') === 0) {
@@ -1171,7 +1424,7 @@ var htmx = (function() {
   function resolveTarget(eltOrSelector, context) {
     if (typeof eltOrSelector === 'string') {
       // @ts-ignore
-      return find(context || document, eltOrSelector)
+      return htmx.find(context || document, eltOrSelector)
     } else {
       return eltOrSelector
     }
@@ -1213,43 +1466,6 @@ var htmx = (function() {
         listener: arg3
       }
     }
-  }
-
-  /**
-   * Adds an event listener to an element
-   *
-   * @see https://htmx.org/api/#on
-   *
-   * @param {EventTarget|string} arg1 the element to add the listener to | the event name to add the listener for
-   * @param {string|EventListener|CustomEventListener} arg2 the event name to add the listener for | the listener to add
-   * @param {EventListener|CustomEventListener} [arg3] the listener to add
-   * @returns {EventListener|CustomEventListener}
-   */
-  function addEventListenerImpl(arg1, arg2, arg3) {
-    ready(function() {
-      const eventArgs = processEventArgs(arg1, arg2, arg3)
-      eventArgs.target.addEventListener(eventArgs.event, eventArgs.listener)
-    })
-    const b = isFunction(arg2)
-    return b ? arg2 : arg3
-  }
-
-  /**
-   * Removes an event listener from an element
-   *
-   * @see https://htmx.org/api/#off
-   *
-   * @param {EventTarget|string} arg1 the element to remove the listener from | the event name to remove the listener from
-   * @param {string|EventListener|CustomEventListener} arg2 the event name to remove the listener from | the listener to remove
-   * @param {EventListener|CustomEventListener} [arg3] the listener to remove
-   * @returns {EventListener|CustomEventListener}
-   */
-  function removeEventListenerImpl(arg1, arg2, arg3) {
-    ready(function() {
-      const eventArgs = processEventArgs(arg1, arg2, arg3)
-      eventArgs.target.removeEventListener(eventArgs.event, eventArgs.listener)
-    })
-    return isFunction(arg2) ? arg2 : arg3
   }
 
   //= ===================================================================
@@ -1395,14 +1611,14 @@ var htmx = (function() {
           }
 
           const beforeSwapDetails = { shouldSwap: true, target, fragment }
-          if (!triggerEvent(target, 'htmx:oobBeforeSwap', beforeSwapDetails)) return
+          if (!htmx.trigger(target, 'htmx:oobBeforeSwap', beforeSwapDetails)) return
 
           target = beforeSwapDetails.target // allow re-targeting
           if (beforeSwapDetails.shouldSwap) {
             swapWithStyle(swapStyle, target, target, fragment, settleInfo)
           }
           forEach(settleInfo.elts, function(elt) {
-            triggerEvent(elt, 'htmx:oobAfterSwap', beforeSwapDetails)
+            htmx.trigger(elt, 'htmx:oobAfterSwap', beforeSwapDetails)
           })
         }
       )
@@ -1418,7 +1634,7 @@ var htmx = (function() {
    * @param {DocumentFragment} fragment
    */
   function handlePreservedElements(fragment) {
-    forEach(findAll(fragment, '[hx-preserve], [data-hx-preserve]'), function(preservedElt) {
+    forEach(htmx.findAll(fragment, '[hx-preserve], [data-hx-preserve]'), function(preservedElt) {
       const id = getAttributeValue(preservedElt, 'id')
       const oldElt = getDocument().getElementById(id)
       if (oldElt != null) {
@@ -1457,10 +1673,10 @@ var htmx = (function() {
    */
   function makeAjaxLoadTask(child) {
     return function() {
-      removeClassFromElement(child, htmx.config.addedClass)
-      processNode(asElement(child))
+      htmx.removeClass(child, htmx.config.addedClass)
+      htmx.process(asElement(child))
       processFocus(asQueryable(child))
-      triggerEvent(child, 'htmx:load')
+      htmx.trigger(child, 'htmx:load')
     }
   }
 
@@ -1485,7 +1701,7 @@ var htmx = (function() {
     handleAttributes(parentNode, fragment, settleInfo)
     while (fragment.childNodes.length > 0) {
       const child = fragment.firstChild
-      addClassToElement(asElement(child), htmx.config.addedClass)
+      htmx.addClass(asElement(child), htmx.config.addedClass)
       parentNode.insertBefore(child, insertBefore)
       if (child.nodeType !== Node.TEXT_NODE && child.nodeType !== Node.COMMENT_NODE) {
         settleInfo.tasks.push(makeAjaxLoadTask(child))
@@ -1535,7 +1751,7 @@ var htmx = (function() {
     if (internalData.onHandlers) {
       for (let i = 0; i < internalData.onHandlers.length; i++) {
         const handlerInfo = internalData.onHandlers[i]
-        removeEventListenerImpl(elt, handlerInfo.event, handlerInfo.listener)
+        htmx.off(elt, handlerInfo.event, handlerInfo.listener)
       }
       delete internalData.onHandlers
     }
@@ -1552,7 +1768,7 @@ var htmx = (function() {
     if (internalData.listenerInfos) {
       forEach(internalData.listenerInfos, function(info) {
         if (info.on) {
-          removeEventListenerImpl(info.on, info.trigger, info.listener)
+          htmx.off(info.on, info.trigger, info.listener)
         }
       })
     }
@@ -1564,7 +1780,7 @@ var htmx = (function() {
    * @param {Node} element
    */
   function cleanUpElement(element) {
-    triggerEvent(element, 'htmx:beforeCleanupElement')
+    htmx.trigger(element, 'htmx:beforeCleanupElement')
     deInitNode(element)
     // @ts-ignore
     // noinspection JSUnresolvedReference
@@ -1731,152 +1947,12 @@ var htmx = (function() {
    * @param {HtmxSettleInfo} settleInfo
    */
   function findAndSwapOobElements(fragment, settleInfo) {
-    forEach(findAll(fragment, '[hx-swap-oob], [data-hx-swap-oob]'), function(oobElement) {
+    forEach(htmx.findAll(fragment, '[hx-swap-oob], [data-hx-swap-oob]'), function(oobElement) {
       const oobValue = getAttributeValue(oobElement, 'hx-swap-oob')
       if (oobValue != null) {
         oobSwap(oobValue, oobElement, settleInfo)
       }
     })
-  }
-
-  /**
-   * Implements complete swapping pipeline, including: focus and selection preservation,
-   * title updates, scroll, OOB swapping, normal swapping and settling
-   * @param {string|Element} target
-   * @param {string} content
-   * @param {HtmxSwapSpecification} swapSpec
-   * @param {SwapOptions} [swapOptions]
-   */
-  function swap(target, content, swapSpec, swapOptions) {
-    if (!swapOptions) {
-      swapOptions = {}
-    }
-
-    target = resolveTarget(target)
-
-    // preserve focus and selection
-    const activeElt = document.activeElement
-    let selectionInfo = {}
-    try {
-      selectionInfo = {
-        elt: activeElt,
-        // @ts-ignore
-        start: activeElt ? activeElt.selectionStart : null,
-        // @ts-ignore
-        end: activeElt ? activeElt.selectionEnd : null
-      }
-    } catch (e) {
-      // safari issue - see https://github.com/microsoft/playwright/issues/5894
-    }
-    const settleInfo = makeSettleInfo(target)
-
-    let fragment = makeFragment(content)
-
-    settleInfo.title = fragment.title
-
-    // select-oob swaps
-    if (swapOptions.selectOOB) {
-      const oobSelectValues = swapOptions.selectOOB.split(',')
-      for (let i = 0; i < oobSelectValues.length; i++) {
-        const oobSelectValue = oobSelectValues[i].split(':', 2)
-        let id = oobSelectValue[0].trim()
-        if (id.indexOf('#') === 0) {
-          id = id.substring(1)
-        }
-        const oobValue = oobSelectValue[1] || 'true'
-        const oobElement = fragment.querySelector('#' + id)
-        if (oobElement) {
-          oobSwap(oobValue, oobElement, settleInfo)
-        }
-      }
-    }
-    // oob swaps
-    findAndSwapOobElements(fragment, settleInfo)
-    forEach(findAll(fragment, 'template'), /** @param {HTMLTemplateElement} template */function(template) {
-      findAndSwapOobElements(template.content, settleInfo)
-      if (template.content.childElementCount === 0) {
-        // Avoid polluting the DOM with empty templates that were only used to encapsulate oob swap
-        template.remove()
-      }
-    })
-
-    // normal swap
-    if (swapOptions.select) {
-      const newFragment = getDocument().createDocumentFragment()
-      forEach(fragment.querySelectorAll(swapOptions.select), function(node) {
-        newFragment.appendChild(node)
-      })
-      fragment = newFragment
-    }
-    handlePreservedElements(fragment)
-    swapWithStyle(swapSpec.swapStyle, swapOptions.contextElement, target, fragment, settleInfo)
-
-    // apply saved focus and selection information to swapped content
-    if (selectionInfo.elt &&
-            !bodyContains(selectionInfo.elt) &&
-            getRawAttribute(selectionInfo.elt, 'id')) {
-      const newActiveElt = document.getElementById(getRawAttribute(selectionInfo.elt, 'id'))
-      const focusOptions = { preventScroll: swapSpec.focusScroll !== undefined ? !swapSpec.focusScroll : !htmx.config.defaultFocusScroll }
-      if (newActiveElt) {
-        // @ts-ignore
-        if (selectionInfo.start && newActiveElt.setSelectionRange) {
-          try {
-            // @ts-ignore
-            newActiveElt.setSelectionRange(selectionInfo.start, selectionInfo.end)
-          } catch (e) {
-            // the setSelectionRange method is present on fields that don't support it, so just let this fail
-          }
-        }
-        newActiveElt.focus(focusOptions)
-      }
-    }
-
-    target.classList.remove(htmx.config.swappingClass)
-    forEach(settleInfo.elts, function(elt) {
-      if (elt.classList) {
-        elt.classList.add(htmx.config.settlingClass)
-      }
-      triggerEvent(elt, 'htmx:afterSwap', swapOptions.eventInfo)
-    })
-    if (swapOptions.afterSwapCallback) {
-      swapOptions.afterSwapCallback()
-    }
-
-    // merge in new title after swap but before settle
-    if (!swapSpec.ignoreTitle) {
-      handleTitle(settleInfo.title)
-    }
-
-    // settle
-    const doSettle = function() {
-      forEach(settleInfo.tasks, function(task) {
-        task.call()
-      })
-      forEach(settleInfo.elts, function(elt) {
-        if (elt.classList) {
-          elt.classList.remove(htmx.config.settlingClass)
-        }
-        triggerEvent(elt, 'htmx:afterSettle', swapOptions.eventInfo)
-      })
-
-      if (swapOptions.anchor) {
-        const anchorTarget = asElement(resolveTarget('#' + swapOptions.anchor))
-        if (anchorTarget) {
-          anchorTarget.scrollIntoView({ block: 'start', behavior: 'auto' })
-        }
-      }
-
-      updateScrollState(settleInfo.elts, swapSpec)
-      if (swapOptions.afterSettleCallback) {
-        swapOptions.afterSettleCallback()
-      }
-    }
-
-    if (swapSpec.settleDelay > 0) {
-      getWindow().setTimeout(doSettle, swapSpec.settleDelay)
-    } else {
-      doSettle()
-    }
   }
 
   /**
@@ -1894,13 +1970,13 @@ var htmx = (function() {
           if (!isRawObject(detail)) {
             detail = { value: detail }
           }
-          triggerEvent(elt, eventName, detail)
+          htmx.trigger(elt, eventName, detail)
         }
       }
     } else {
       const eventNames = triggerBody.split(',')
       for (let i = 0; i < eventNames.length; i++) {
-        triggerEvent(elt, eventNames[i].trim(), [])
+        htmx.trigger(elt, eventNames[i].trim(), [])
       }
     }
   }
@@ -2062,7 +2138,7 @@ var htmx = (function() {
           /** @type HtmxTriggerSpecification */
           const every = { trigger: 'every' }
           consumeUntil(tokens, NOT_WHITESPACE)
-          every.pollInterval = parseInterval(consumeUntil(tokens, /[,\[\s]/))
+          every.pollInterval = htmx.parseInterval(consumeUntil(tokens, /[,\[\s]/))
           consumeUntil(tokens, NOT_WHITESPACE)
           var eventFilter = maybeGenerateConditional(elt, tokens, 'event')
           if (eventFilter) {
@@ -2087,7 +2163,7 @@ var htmx = (function() {
               triggerSpec.consume = true
             } else if (token === 'delay' && tokens[0] === ':') {
               tokens.shift()
-              triggerSpec.delay = parseInterval(consumeUntil(tokens, WHITESPACE_OR_COMMA))
+              triggerSpec.delay = htmx.parseInterval(consumeUntil(tokens, WHITESPACE_OR_COMMA))
             } else if (token === 'from' && tokens[0] === ':') {
               tokens.shift()
               if (COMBINED_SELECTOR_START.test(tokens[0])) {
@@ -2109,7 +2185,7 @@ var htmx = (function() {
               triggerSpec.target = consumeCSSSelector(tokens)
             } else if (token === 'throttle' && tokens[0] === ':') {
               tokens.shift()
-              triggerSpec.throttle = parseInterval(consumeUntil(tokens, WHITESPACE_OR_COMMA))
+              triggerSpec.throttle = htmx.parseInterval(consumeUntil(tokens, WHITESPACE_OR_COMMA))
             } else if (token === 'queue' && tokens[0] === ':') {
               tokens.shift()
               triggerSpec.queue = consumeUntil(tokens, WHITESPACE_OR_COMMA)
@@ -2221,7 +2297,7 @@ var htmx = (function() {
       triggerSpecs.forEach(function(triggerSpec) {
         addEventListener(elt, function(node, evt) {
           const elt = asElement(node)
-          if (closest(elt, htmx.config.disableSelector)) {
+          if (htmx.closest(elt, htmx.config.disableSelector)) {
             cleanUpElement(elt)
             return
           }
@@ -2245,7 +2321,7 @@ var htmx = (function() {
       if (elt.tagName === 'FORM') {
         return true
       }
-      if (matches(elt, 'input[type="submit"], button') && closest(elt, 'form') !== null) {
+      if (matches(elt, 'input[type="submit"], button') && htmx.closest(elt, 'form') !== null) {
         return true
       }
       if (elt instanceof HTMLAnchorElement && elt.href &&
@@ -2376,7 +2452,7 @@ var htmx = (function() {
           } else if (triggerSpec.delay > 0) {
             elementData.delayed = getWindow().setTimeout(function() { handler(elt, evt) }, triggerSpec.delay)
           } else {
-            triggerEvent(elt, 'htmx:trigger')
+            htmx.trigger(elt, 'htmx:trigger')
             handler(elt, evt)
           }
         }
@@ -2420,10 +2496,10 @@ var htmx = (function() {
       elt.setAttribute('data-hx-revealed', 'true')
       const nodeData = getInternalData(elt)
       if (nodeData.initHash) {
-        triggerEvent(elt, 'revealed')
+        htmx.trigger(elt, 'revealed')
       } else {
         // if the node isn't initialized, wait for it before triggering the request
-        elt.addEventListener('htmx:afterProcessNode', function() { triggerEvent(elt, 'revealed') }, { once: true })
+        elt.addEventListener('htmx:afterProcessNode', function() { htmx.trigger(elt, 'revealed') }, { once: true })
       }
     }
   }
@@ -2467,7 +2543,7 @@ var htmx = (function() {
         triggerSpecs.forEach(function(triggerSpec) {
           addTriggerHandler(elt, triggerSpec, nodeData, function(node, evt) {
             const elt = asElement(node)
-            if (closest(elt, htmx.config.disableSelector)) {
+            if (htmx.closest(elt, htmx.config.disableSelector)) {
               cleanUpElement(elt)
               return
             }
@@ -2508,7 +2584,7 @@ var htmx = (function() {
         for (let i = 0; i < entries.length; i++) {
           const entry = entries[i]
           if (entry.isIntersecting) {
-            triggerEvent(elt, 'intersect')
+            htmx.trigger(elt, 'intersect')
             break
           }
         }
@@ -2589,7 +2665,7 @@ var htmx = (function() {
    * @param {Event} evt
    */
   function maybeSetLastButtonClicked(evt) {
-    const elt = /** @type {HTMLButtonElement|HTMLInputElement} */ (closest(asElement(evt.target), "button, input[type='submit']"))
+    const elt = /** @type {HTMLButtonElement|HTMLInputElement} */ (htmx.closest(asElement(evt.target), "button, input[type='submit']"))
     const internalData = getRelatedFormData(evt)
     if (internalData) {
       internalData.lastButtonClicked = elt
@@ -2611,11 +2687,11 @@ var htmx = (function() {
    * @returns {HtmxNodeInternalData|undefined}
    */
   function getRelatedFormData(evt) {
-    const elt = closest(asElement(evt.target), "button, input[type='submit']")
+    const elt = htmx.closest(asElement(evt.target), "button, input[type='submit']")
     if (!elt) {
       return
     }
-    const form = resolveTarget('#' + getRawAttribute(elt, 'form'), elt.getRootNode()) || closest(elt, 'form')
+    const form = resolveTarget('#' + getRawAttribute(elt, 'form'), elt.getRootNode()) || htmx.closest(elt, 'form')
     if (!form) {
       return
     }
@@ -2692,7 +2768,7 @@ var htmx = (function() {
    * @param {Element|HTMLInputElement} elt
    */
   function initNode(elt) {
-    if (closest(elt, htmx.config.disableSelector)) {
+    if (htmx.closest(elt, htmx.config.disableSelector)) {
       cleanUpElement(elt)
       return
     }
@@ -2703,7 +2779,7 @@ var htmx = (function() {
 
       nodeData.initHash = attributeHash(elt)
 
-      triggerEvent(elt, 'htmx:beforeProcessNode')
+      htmx.trigger(elt, 'htmx:beforeProcessNode')
 
       // @ts-ignore
       if (elt.value) {
@@ -2732,26 +2808,8 @@ var htmx = (function() {
         initButtonTracking(elt)
       }
 
-      triggerEvent(elt, 'htmx:afterProcessNode')
+      htmx.trigger(elt, 'htmx:afterProcessNode')
     }
-  }
-
-  /**
-   * Processes new content, enabling htmx behavior. This can be useful if you have content that is added to the DOM outside of the normal htmx request cycle but still want htmx attributes to work.
-   *
-   * @see https://htmx.org/api/#process
-   *
-   * @param {Element|string} elt element to process
-   */
-  function processNode(elt) {
-    elt = resolveTarget(elt)
-    if (closest(elt, htmx.config.disableSelector)) {
-      cleanUpElement(elt)
-      return
-    }
-    initNode(elt)
-    forEach(findElementsToProcess(elt), function(child) { initNode(child) })
-    forEach(findHxOnWildcardElements(elt), processHxOnWildcard)
   }
 
   //= ===================================================================
@@ -2790,7 +2848,7 @@ var htmx = (function() {
    * @param {any=} detail
    */
   function triggerErrorEvent(elt, eventName, detail) {
-    triggerEvent(elt, eventName, mergeObjects({ error: eventName }, detail))
+    htmx.trigger(elt, eventName, mergeObjects({ error: eventName }, detail))
   }
 
   /**
@@ -2826,42 +2884,6 @@ var htmx = (function() {
     } else if (console.log) {
       console.log('ERROR: ', msg)
     }
-  }
-
-  /**
-   * Triggers a given event on an element
-   *
-   * @see https://htmx.org/api/#trigger
-   *
-   * @param {EventTarget|string} elt the element to trigger the event on
-   * @param {string} eventName the name of the event to trigger
-   * @param {any=} detail details for the event
-   * @returns {boolean}
-   */
-  function triggerEvent(elt, eventName, detail) {
-    elt = resolveTarget(elt)
-    if (detail == null) {
-      detail = {}
-    }
-    detail.elt = elt
-    const event = makeEvent(eventName, detail)
-    if (htmx.logger && !ignoreEventForLogging(eventName)) {
-      htmx.logger(elt, eventName, detail)
-    }
-    if (detail.error) {
-      logError(detail.error)
-      triggerEvent(elt, 'htmx:error', { errorInfo: detail })
-    }
-    let eventResult = elt.dispatchEvent(event)
-    const kebabName = kebabEventName(eventName)
-    if (eventResult && kebabName !== eventName) {
-      const kebabedEvent = makeEvent(kebabName, event.detail)
-      eventResult = eventResult && elt.dispatchEvent(kebabedEvent)
-    }
-    withExtensions(asElement(elt), function(extension) {
-      eventResult = eventResult && (extension.onEvent(eventName, event) !== false && !event.defaultPrevented)
-    })
-    return eventResult
   }
 
   //= ===================================================================
@@ -2910,7 +2932,7 @@ var htmx = (function() {
     /** @type HtmxHistoryItem */
     const newHistoryItem = { url, content: innerHTML, title, scroll }
 
-    triggerEvent(getDocument().body, 'htmx:historyItemCreated', { item: newHistoryItem, cache: historyCache })
+    htmx.trigger(getDocument().body, 'htmx:historyItemCreated', { item: newHistoryItem, cache: historyCache })
 
     historyCache.push(newHistoryItem)
     while (historyCache.length > htmx.config.historyCacheSize) {
@@ -2964,8 +2986,8 @@ var htmx = (function() {
   function cleanInnerHtmlForHistory(elt) {
     const className = htmx.config.requestClass
     const clone = /** @type Element */ (elt.cloneNode(true))
-    forEach(findAll(clone, '.' + className), function(child) {
-      removeClassFromElement(child, className)
+    forEach(htmx.findAll(clone, '.' + className), function(child) {
+      htmx.removeClass(child, className)
     })
     return clone.innerHTML
   }
@@ -2987,7 +3009,7 @@ var htmx = (function() {
       disableHistoryCache = getDocument().querySelector('[hx-history="false"],[data-hx-history="false"]')
     }
     if (!disableHistoryCache) {
-      triggerEvent(getDocument().body, 'htmx:beforeHistorySave', { path, historyElt: elt })
+      htmx.trigger(getDocument().body, 'htmx:beforeHistorySave', { path, historyElt: elt })
       saveToHistoryCache(path, elt)
     }
 
@@ -3034,14 +3056,14 @@ var htmx = (function() {
   function loadHistoryFromServer(path) {
     const request = new XMLHttpRequest()
     const details = { path, xhr: request }
-    triggerEvent(getDocument().body, 'htmx:historyCacheMiss', details)
+    htmx.trigger(getDocument().body, 'htmx:historyCacheMiss', details)
     request.open('GET', path, true)
     request.setRequestHeader('HX-Request', 'true')
     request.setRequestHeader('HX-History-Restore-Request', 'true')
     request.setRequestHeader('HX-Current-URL', getDocument().location.href)
     request.onload = function() {
       if (this.status >= 200 && this.status < 400) {
-        triggerEvent(getDocument().body, 'htmx:historyCacheMissLoad', details)
+        htmx.trigger(getDocument().body, 'htmx:historyCacheMissLoad', details)
         const fragment = makeFragment(this.response)
         // @ts-ignore
         const content = fragment.querySelector('[hx-history-elt],[data-hx-history-elt]') || fragment
@@ -3053,7 +3075,7 @@ var htmx = (function() {
         swapInnerHTML(historyElement, content, settleInfo)
         settleImmediately(settleInfo.tasks)
         currentPathForHistory = path
-        triggerEvent(getDocument().body, 'htmx:historyRestore', { path, cacheMiss: true, serverResponse: this.response })
+        htmx.trigger(getDocument().body, 'htmx:historyRestore', { path, cacheMiss: true, serverResponse: this.response })
       } else {
         triggerErrorEvent(getDocument().body, 'htmx:historyCacheMissLoadError', details)
       }
@@ -3079,7 +3101,7 @@ var htmx = (function() {
         window.scrollTo(0, cached.scroll)
       }, 0) // next 'tick', so browser has time to render layout
       currentPathForHistory = path
-      triggerEvent(getDocument().body, 'htmx:historyRestore', { path, item: cached })
+      htmx.trigger(getDocument().body, 'htmx:historyRestore', { path, item: cached })
     } else {
       if (htmx.config.refreshOnHistoryMiss) {
         // @ts-ignore: optional parameter in reload() function throws error
@@ -3172,7 +3194,7 @@ var htmx = (function() {
   function shouldInclude(element) {
     // Cast to trick tsc
     const elt = /** @type {HTMLInputElement} */ (element)
-    if (elt.name === '' || elt.name == null || elt.disabled || closest(elt, 'fieldset[disabled]')) {
+    if (elt.name === '' || elt.name == null || elt.disabled || htmx.closest(elt, 'fieldset[disabled]')) {
       return false
     }
     // ignore "submitter" types (see jQuery src/serialize.js)
@@ -3271,10 +3293,10 @@ var htmx = (function() {
   function validateElement(elt, errors) {
     const element = /** @type {HTMLElement & ElementInternals} */ (elt)
     if (element.willValidate) {
-      triggerEvent(element, 'htmx:validation:validate')
+      htmx.trigger(element, 'htmx:validation:validate')
       if (!element.checkValidity()) {
         errors.push({ elt: element, message: element.validationMessage, validity: element.validity })
-        triggerEvent(element, 'htmx:validation:failed', { message: element.validationMessage, validity: element.validity })
+        htmx.trigger(element, 'htmx:validation:failed', { message: element.validationMessage, validity: element.validity })
       }
     }
   }
@@ -3321,7 +3343,7 @@ var htmx = (function() {
 
     // for a non-GET include the closest form
     if (verb !== 'get') {
-      processInputValue(processed, priorityFormData, errors, closest(elt, 'form'), validate)
+      processInputValue(processed, priorityFormData, errors, htmx.closest(elt, 'form'), validate)
     }
 
     // include the element itself
@@ -3481,9 +3503,9 @@ var htmx = (function() {
         for (let i = 0; i < split.length; i++) {
           const value = split[i]
           if (value.indexOf('swap:') === 0) {
-            swapSpec.swapDelay = parseInterval(value.substr(5))
+            swapSpec.swapDelay = htmx.parseInterval(value.substr(5))
           } else if (value.indexOf('settle:') === 0) {
-            swapSpec.settleDelay = parseInterval(value.substr(7))
+            swapSpec.settleDelay = htmx.parseInterval(value.substr(7))
           } else if (value.indexOf('transition:') === 0) {
             swapSpec.transition = value.substr(11) === 'true'
           } else if (value.indexOf('ignoreTitle:') === 0) {
@@ -3734,44 +3756,6 @@ var htmx = (function() {
   }
 
   /**
-   * Issues an htmx-style AJAX request
-   *
-   * @see https://htmx.org/api/#ajax
-   *
-   * @param {HttpVerb} verb
-   * @param {string} path the URL path to make the AJAX
-   * @param {Element|string|HtmxAjaxHelperContext} context the element to target (defaults to the **body**) | a selector for the target | a context object that contains any of the following
-   * @return {Promise<void>} Promise that resolves immediately if no request is sent, or when the request is complete
-   */
-  function ajaxHelper(verb, path, context) {
-    // @ts-ignore
-    verb = verb.toLowerCase()
-    if (context) {
-      if (context instanceof Element || typeof context === 'string') {
-        return issueAjaxRequest(verb, path, null, null, {
-          targetOverride: resolveTarget(context),
-          returnPromise: true
-        })
-      } else {
-        return issueAjaxRequest(verb, path, resolveTarget(context.source), context.event,
-          {
-            handler: context.handler,
-            headers: context.headers,
-            values: context.values,
-            targetOverride: resolveTarget(context.target),
-            swapOverride: context.swap,
-            select: context.select,
-            returnPromise: true
-          })
-      }
-    } else {
-      return issueAjaxRequest(verb, path, null, null, {
-        returnPromise: true
-      })
-    }
-  }
-
-  /**
    * @param {Element} elt
    * @return {Element[]}
    */
@@ -3808,7 +3792,7 @@ var htmx = (function() {
         return false
       }
     }
-    return triggerEvent(elt, 'htmx:validateUrl', mergeObjects({ url, sameHost }, requestConfig))
+    return htmx.trigger(elt, 'htmx:validateUrl', mergeObjects({ url, sameHost }, requestConfig))
   }
 
   /**
@@ -3999,7 +3983,7 @@ var htmx = (function() {
         return issueAjaxRequest(verb, path, elt, event, etc, !!skipConfirmation)
       }
       const confirmDetails = { target, elt, path, verb, triggeringEvent: event, etc, issueRequest, question: confirmQuestion }
-      if (triggerEvent(elt, 'htmx:confirm', confirmDetails) === false) {
+      if (htmx.trigger(elt, 'htmx:confirm', confirmDetails) === false) {
         maybeCall(resolve)
         return promise
       }
@@ -4031,7 +4015,7 @@ var htmx = (function() {
           abortable = true
         }
       } else if (syncStrategy === 'replace') {
-        triggerEvent(syncElt, 'htmx:abort') // abort the current request and continue
+        htmx.trigger(syncElt, 'htmx:abort') // abort the current request and continue
       } else if (syncStrategy.indexOf('queue') === 0) {
         const queueStrArray = syncStrategy.split(' ')
         queueStrategy = (queueStrArray[1] || 'last').trim()
@@ -4040,7 +4024,7 @@ var htmx = (function() {
 
     if (eltData.xhr) {
       if (eltData.abortable) {
-        triggerEvent(syncElt, 'htmx:abort') // abort the current request and continue
+        htmx.trigger(syncElt, 'htmx:abort') // abort the current request and continue
       } else {
         if (queueStrategy == null) {
           if (event) {
@@ -4092,7 +4076,7 @@ var htmx = (function() {
       var promptResponse = prompt(promptQuestion)
       // prompt returns null if cancelled and empty string if accepted with no entry
       if (promptResponse === null ||
-      !triggerEvent(elt, 'htmx:prompt', { prompt: promptResponse, target })) {
+      !htmx.trigger(elt, 'htmx:prompt', { prompt: promptResponse, target })) {
         maybeCall(resolve)
         endRequestLock()
         return promise
@@ -4165,7 +4149,7 @@ var htmx = (function() {
       triggeringEvent: event
     }
 
-    if (!triggerEvent(elt, 'htmx:configRequest', requestConfig)) {
+    if (!htmx.trigger(elt, 'htmx:configRequest', requestConfig)) {
       maybeCall(resolve)
       endRequestLock()
       return promise
@@ -4180,7 +4164,7 @@ var htmx = (function() {
     useUrlParams = requestConfig.useUrlParams
 
     if (errors && errors.length > 0) {
-      triggerEvent(elt, 'htmx:validation:halted', requestConfig)
+      htmx.trigger(elt, 'htmx:validation:halted', requestConfig)
       maybeCall(resolve)
       endRequestLock()
       return promise
@@ -4252,8 +4236,8 @@ var htmx = (function() {
         responseInfo.pathInfo.responsePath = getPathFromResponse(xhr)
         responseHandler(elt, responseInfo)
         removeRequestIndicators(indicators, disableElts)
-        triggerEvent(elt, 'htmx:afterRequest', responseInfo)
-        triggerEvent(elt, 'htmx:afterOnLoad', responseInfo)
+        htmx.trigger(elt, 'htmx:afterRequest', responseInfo)
+        htmx.trigger(elt, 'htmx:afterOnLoad', responseInfo)
         // if the body no longer contains the element, trigger the event on the closest parent
         // remaining in the DOM
         if (!bodyContains(elt)) {
@@ -4265,8 +4249,8 @@ var htmx = (function() {
             }
           }
           if (secondaryTriggerElt) {
-            triggerEvent(secondaryTriggerElt, 'htmx:afterRequest', responseInfo)
-            triggerEvent(secondaryTriggerElt, 'htmx:afterOnLoad', responseInfo)
+            htmx.trigger(secondaryTriggerElt, 'htmx:afterRequest', responseInfo)
+            htmx.trigger(secondaryTriggerElt, 'htmx:afterOnLoad', responseInfo)
           }
         }
         maybeCall(resolve)
@@ -4297,7 +4281,7 @@ var htmx = (function() {
       maybeCall(reject)
       endRequestLock()
     }
-    if (!triggerEvent(elt, 'htmx:beforeRequest', responseInfo)) {
+    if (!htmx.trigger(elt, 'htmx:beforeRequest', responseInfo)) {
       maybeCall(resolve)
       endRequestLock()
       return promise
@@ -4308,7 +4292,7 @@ var htmx = (function() {
     forEach(['loadstart', 'loadend', 'progress', 'abort'], function(eventName) {
       forEach([xhr, xhr.upload], function(target) {
         target.addEventListener(eventName, function(event) {
-          triggerEvent(elt, 'htmx:xhr:' + eventName, {
+          htmx.trigger(elt, 'htmx:xhr:' + eventName, {
             lengthComputable: event.lengthComputable,
             loaded: event.loaded,
             total: event.total
@@ -4316,7 +4300,7 @@ var htmx = (function() {
         })
       })
     })
-    triggerEvent(elt, 'htmx:beforeSend', responseInfo)
+    htmx.trigger(elt, 'htmx:beforeSend', responseInfo)
     const params = useUrlParams ? null : encodeParamsForBody(xhr, elt, filteredFormData)
     xhr.send(params)
     return promise
@@ -4446,7 +4430,7 @@ var htmx = (function() {
    */
   function handleTitle(title) {
     if (title) {
-      const titleElt = find('title')
+      const titleElt = htmx.find('title')
       if (titleElt) {
         titleElt.innerHTML = title
       } else {
@@ -4465,7 +4449,7 @@ var htmx = (function() {
     const etc = responseInfo.etc
     const responseInfoSelect = responseInfo.select
 
-    if (!triggerEvent(elt, 'htmx:beforeOnLoad', responseInfo)) return
+    if (!htmx.trigger(elt, 'htmx:beforeOnLoad', responseInfo)) return
 
     if (hasHeader(xhr, /HX-Trigger:/i)) {
       handleTriggerHeader(xhr, 'HX-Trigger', elt)
@@ -4482,7 +4466,7 @@ var htmx = (function() {
         redirectPath = redirectSwapSpec.path
         delete redirectSwapSpec.path
       }
-      ajaxHelper('get', redirectPath, redirectSwapSpec).then(function() {
+      htmx.ajax('get', redirectPath, redirectSwapSpec).then(function() {
         pushUrlIntoHistory(redirectPath)
       })
       return
@@ -4546,9 +4530,9 @@ var htmx = (function() {
       selectOverride
     }, responseInfo)
 
-    if (responseHandling.event && !triggerEvent(target, responseHandling.event, beforeSwapDetails)) return
+    if (responseHandling.event && !htmx.trigger(target, responseHandling.event, beforeSwapDetails)) return
 
-    if (!triggerEvent(target, 'htmx:beforeSwap', beforeSwapDetails)) return
+    if (!htmx.trigger(target, 'htmx:beforeSwap', beforeSwapDetails)) return
 
     target = beforeSwapDetails.target // allow re-targeting
     serverResponse = beforeSwapDetails.serverResponse // allow updating content
@@ -4604,17 +4588,17 @@ var htmx = (function() {
         try {
           // if we need to save history, do so, before swapping so that relative resources have the correct base URL
           if (historyUpdate.type) {
-            triggerEvent(getDocument().body, 'htmx:beforeHistoryUpdate', mergeObjects({ history: historyUpdate }, responseInfo))
+            htmx.trigger(getDocument().body, 'htmx:beforeHistoryUpdate', mergeObjects({ history: historyUpdate }, responseInfo))
             if (historyUpdate.type === 'push') {
               pushUrlIntoHistory(historyUpdate.path)
-              triggerEvent(getDocument().body, 'htmx:pushedIntoHistory', { path: historyUpdate.path })
+              htmx.trigger(getDocument().body, 'htmx:pushedIntoHistory', { path: historyUpdate.path })
             } else {
               replaceUrlInHistory(historyUpdate.path)
-              triggerEvent(getDocument().body, 'htmx:replacedInHistory', { path: historyUpdate.path })
+              htmx.trigger(getDocument().body, 'htmx:replacedInHistory', { path: historyUpdate.path })
             }
           }
 
-          swap(target, serverResponse, swapSpec, {
+          htmx.swap(target, serverResponse, swapSpec, {
             select: selectOverride || select,
             selectOOB,
             eventInfo: responseInfo,
@@ -4653,7 +4637,7 @@ var htmx = (function() {
       }
 
       if (shouldTransition &&
-              triggerEvent(elt, 'htmx:beforeTransition', responseInfo) &&
+              htmx.trigger(elt, 'htmx:beforeTransition', responseInfo) &&
               typeof Promise !== 'undefined' &&
               // @ts-ignore experimental feature atm
               document.startViewTransition) {
@@ -4703,32 +4687,6 @@ var htmx = (function() {
       handleSwap: function(swapStyle, target, fragment, settleInfo) { return false },
       encodeParameters: function(xhr, parameters, elt) { return null }
     }
-  }
-
-  /**
-   * defineExtension initializes the extension and adds it to the htmx registry
-   *
-   * @see https://htmx.org/api/#defineExtension
-   *
-   * @param {string} name the extension name
-   * @param {HtmxExtension} extension the extension definition
-   */
-  function defineExtension(name, extension) {
-    if (extension.init) {
-      extension.init(internalAPI)
-    }
-    extensions[name] = mergeObjects(extensionBase(), extension)
-  }
-
-  /**
-   * removeExtension removes an extension from the htmx registry
-   *
-   * @see https://htmx.org/api/#removeExtension
-   *
-   * @param {string} name
-   */
-  function removeExtension(name) {
-    delete extensions[name]
   }
 
   /**
@@ -4826,7 +4784,7 @@ var htmx = (function() {
     mergeMetaConfig()
     insertIndicatorStyles()
     let body = getDocument().body
-    processNode(body)
+    htmx.process(body)
     const restoredElts = getDocument().querySelectorAll(
       "[hx-trigger='restored'],[data-hx-trigger='restored']"
     )
@@ -4844,9 +4802,9 @@ var htmx = (function() {
       if (event.state && event.state.htmx) {
         restoreHistory()
         forEach(restoredElts, function(elt) {
-          triggerEvent(elt, 'htmx:restored', {
+          htmx.trigger(elt, 'htmx:restored', {
             document: getDocument(),
-            triggerEvent
+            triggerEvent: htmx.trigger
           })
         })
       } else {
@@ -4856,7 +4814,7 @@ var htmx = (function() {
       }
     }
     getWindow().setTimeout(function() {
-      triggerEvent(body, 'htmx:load', {}) // give ready handlers a chance to load up before firing this event
+      htmx.trigger(body, 'htmx:load', {}) // give ready handlers a chance to load up before firing this event
       body = null // kill reference for gc
     }, 0)
   })
