@@ -284,12 +284,12 @@ var htmx = (function() {
   }
 
   /**
-   * @param {Element} elt
+   * @param {Node} elt
    * @param {string} name
    * @returns {(string | null)}
    */
   function getRawAttribute(elt, name) {
-    return elt.getAttribute && elt.getAttribute(name)
+    return elt instanceof Element && elt.getAttribute && elt.getAttribute(name)
   }
 
   /**
@@ -305,7 +305,7 @@ var htmx = (function() {
 
   /**
    *
-   * @param {Element} elt
+   * @param {Node} elt
    * @param {string} qualifiedName
    * @returns {(string | null)}
    */
@@ -393,14 +393,14 @@ var htmx = (function() {
   }
 
   /**
-   * @param {Element} elt
+   * @param {Node} elt
    * @param {string} selector
    * @returns {boolean}
    */
   function matches(elt, selector) {
     // @ts-ignore: non-standard properties for browser compatibility
     // noinspection JSUnresolvedVariable
-    const matchesFunction = elt.matches || elt.matchesSelector || elt.msMatchesSelector || elt.mozMatchesSelector || elt.webkitMatchesSelector || elt.oMatchesSelector
+    const matchesFunction = elt instanceof Element && (elt.matches || elt.matchesSelector || elt.msMatchesSelector || elt.mozMatchesSelector || elt.webkitMatchesSelector || elt.oMatchesSelector)
     return !!matchesFunction && matchesFunction.call(elt, selector)
   }
 
@@ -890,18 +890,10 @@ var htmx = (function() {
 
   /**
    * @param {Node} elt
-   * @return {Element|Document|DocumentFragment|null}
+   * @return {Queryable|null}
    */
   function asQueryable(elt) {
     return elt instanceof Element || elt instanceof Document || elt instanceof DocumentFragment ? elt : null
-  }
-
-  /**
-   * @param {any} node
-   * @return {DocumentFragment|null}
-   */
-  function asDocumentFragment(node) {
-    return node instanceof DocumentFragment ? node : null
   }
 
   /**
@@ -998,7 +990,7 @@ var htmx = (function() {
    */
   function closest(elt, selector) {
     elt = asElement(resolveTarget(elt))
-    if (elt.closest) {
+    if (elt && elt.closest) {
       return elt.closest(selector)
     } else {
       // TODO remove when IE goes away
@@ -1352,7 +1344,7 @@ var htmx = (function() {
           fragment = getDocument().createDocumentFragment()
           fragment.appendChild(oobElementClone)
           if (!isInlineSwap(swapStyle, target)) {
-            fragment = asDocumentFragment(oobElementClone) // if this is not an inline swap, we use the content of the node, not the node itself
+            fragment = asQueryable(oobElementClone) // if this is not an inline swap, we use the content of the node, not the node itself
           }
 
           const beforeSwapDetails = { shouldSwap: true, target, fragment }
@@ -1390,7 +1382,7 @@ var htmx = (function() {
 
   /**
    * @param {Node} parentNode
-   * @param {DocumentFragment} fragment
+   * @param {Queryable} fragment
    * @param {HtmxSettleInfo} settleInfo
    */
   function handleAttributes(parentNode, fragment, settleInfo) {
@@ -1420,17 +1412,17 @@ var htmx = (function() {
     return function() {
       removeClassFromElement(child, htmx.config.addedClass)
       processNode(asElement(child))
-      processFocus(asHtmlElement(child))
+      processFocus(asQueryable(child))
       triggerEvent(child, 'htmx:load')
     }
   }
 
   /**
-   * @param {HTMLElement} child
+   * @param {Queryable} child
    */
   function processFocus(child) {
     const autofocus = '[autofocus]'
-    const autoFocusedElt = matches(child, autofocus) ? child : asHtmlElement(child.querySelector(autofocus))
+    const autoFocusedElt = asHtmlElement(matches(child, autofocus) ? child : child.querySelector(autofocus))
     if (autoFocusedElt != null) {
       autoFocusedElt.focus()
     }
@@ -1439,7 +1431,7 @@ var htmx = (function() {
   /**
    * @param {Node} parentNode
    * @param {Node} insertBefore
-   * @param {DocumentFragment} fragment
+   * @param {Queryable} fragment
    * @param {HtmxSettleInfo} settleInfo
    */
   function insertNodesBefore(parentNode, insertBefore, fragment, settleInfo) {
@@ -1537,7 +1529,7 @@ var htmx = (function() {
 
   /**
    * @param {Node} target
-   * @param {DocumentFragment} fragment
+   * @param {Queryable} fragment
    * @param {HtmxSettleInfo} settleInfo
    */
   function swapOuterHTML(target, fragment, settleInfo) {
@@ -1568,7 +1560,7 @@ var htmx = (function() {
 
   /**
    * @param {Node} target
-   * @param {DocumentFragment} fragment
+   * @param {Queryable} fragment
    * @param {HtmxSettleInfo} settleInfo
    */
   function swapAfterBegin(target, fragment, settleInfo) {
@@ -1577,7 +1569,7 @@ var htmx = (function() {
 
   /**
    * @param {Node} target
-   * @param {DocumentFragment} fragment
+   * @param {Queryable} fragment
    * @param {HtmxSettleInfo} settleInfo
    */
   function swapBeforeBegin(target, fragment, settleInfo) {
@@ -1586,7 +1578,7 @@ var htmx = (function() {
 
   /**
    * @param {Node} target
-   * @param {DocumentFragment} fragment
+   * @param {Queryable} fragment
    * @param {HtmxSettleInfo} settleInfo
    */
   function swapBeforeEnd(target, fragment, settleInfo) {
@@ -1595,7 +1587,7 @@ var htmx = (function() {
 
   /**
    * @param {Node} target
-   * @param {DocumentFragment} fragment
+   * @param {Queryable} fragment
    * @param {HtmxSettleInfo} settleInfo
    */
   function swapAfterEnd(target, fragment, settleInfo) {
@@ -1612,7 +1604,7 @@ var htmx = (function() {
 
   /**
    * @param {Node} target
-   * @param {DocumentFragment} fragment
+   * @param {Queryable} fragment
    * @param {HtmxSettleInfo} settleInfo
    */
   function swapInnerHTML(target, fragment, settleInfo) {
@@ -1632,7 +1624,7 @@ var htmx = (function() {
    * @param {HtmxSwapStyle} swapStyle
    * @param {Element} elt
    * @param {Node} target
-   * @param {DocumentFragment} fragment
+   * @param {Queryable} fragment
    * @param {HtmxSettleInfo} settleInfo
    */
   function swapWithStyle(swapStyle, elt, target, fragment, settleInfo) {
@@ -4996,4 +4988,8 @@ var htmx = (function() {
  * @property {(swapStyle: HtmxSwapStyle) => boolean} isInlineSwap
  * @property {(swapStyle: HtmxSwapStyle, target: Element, fragment: Node, settleInfo: HtmxSettleInfo) => boolean} handleSwap
  * @property {(xhr: XMLHttpRequest, parameters: FormData, elt: Element) => *|string|null} encodeParameters
+ */
+
+/**
+ * @typedef {Element|Document|DocumentFragment} Queryable
  */
