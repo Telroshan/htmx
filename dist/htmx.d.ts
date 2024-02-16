@@ -189,7 +189,6 @@ type HtmxSettleInfo = {
     title?: string;
 };
 type HtmxExtension = any;
-type Queryable = Element | Document | DocumentFragment;
 /**
  * Adds a callback for the **htmx:load** event. This can be used to process new content, for example initializing the content with a javascript library
  *

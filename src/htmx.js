@@ -889,6 +889,10 @@ var htmx = (function() {
   }
 
   /**
+   * @typedef {Element|Document|DocumentFragment} Queryable
+   */
+
+  /**
    * @param {Node} elt
    * @return {Queryable|null}
    */
@@ -4988,8 +4992,4 @@ var htmx = (function() {
  * @property {(swapStyle: HtmxSwapStyle) => boolean} isInlineSwap
  * @property {(swapStyle: HtmxSwapStyle, target: Element, fragment: Node, settleInfo: HtmxSettleInfo) => boolean} handleSwap
  * @property {(xhr: XMLHttpRequest, parameters: FormData, elt: Element) => *|string|null} encodeParameters
- */
-
-/**
- * @typedef {Element|Document|DocumentFragment} Queryable
  */
