@@ -1431,12 +1431,7 @@ var htmx = (function() {
   }
 
   /**
-   * @typedef {string} HtmxEventName
-   * TODO VALUES
-   */
-
-  /**
-   * @typedef {keyof HTMLElementEventMap|HtmxEventName} AnyEventName
+   * @typedef {keyof HTMLElementEventMap|string} AnyEventName
    */
 
   /**
