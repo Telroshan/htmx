@@ -11,11 +11,11 @@ var htmx = (function() {
      *
      * @see https://htmx.org/api/#onLoad
      *
-     * @param {(evt: CustomEvent) => void} callback the callback to call on newly loaded content
-     * @returns {EventListener|CustomEventListener}
+     * @param {(elt: Node) => void} callback the callback to call on newly loaded content
+     * @returns {EventListener}
      */
     onLoad: function(callback) {
-      const value = htmx.on('htmx:load', function(evt) {
+      const value = htmx.on('htmx:load',  /** @param {CustomEvent} evt */ function(evt) {
         callback(evt.detail.elt)
       })
       return value
@@ -43,9 +43,9 @@ var htmx = (function() {
      * @see https://htmx.org/api/#on
      *
      * @param {EventTarget|string} arg1 the element to add the listener to | the event name to add the listener for
-     * @param {string|EventListener|CustomEventListener} arg2 the event name to add the listener for | the listener to add
-     * @param {EventListener|CustomEventListener} [arg3] the listener to add
-     * @returns {EventListener|CustomEventListener}
+     * @param {string|EventListener} arg2 the event name to add the listener for | the listener to add
+     * @param {EventListener} [arg3] the listener to add
+     * @returns {EventListener}
      */
     on: function on(arg1, arg2, arg3) {
       ready(function() {
@@ -61,9 +61,9 @@ var htmx = (function() {
      * @see https://htmx.org/api/#off
      *
      * @param {EventTarget|string} arg1 the element to remove the listener from | the event name to remove the listener from
-     * @param {string|EventListener|CustomEventListener} arg2 the event name to remove the listener from | the listener to remove
-     * @param {EventListener|CustomEventListener} [arg3] the listener to remove
-     * @returns {EventListener|CustomEventListener}
+     * @param {string|EventListener} arg2 the event name to remove the listener from | the listener to remove
+     * @param {EventListener} [arg3] the listener to remove
+     * @returns {EventListener}
      */
     off: function(arg1, arg2, arg3) {
       ready(function() {
@@ -1443,13 +1443,13 @@ var htmx = (function() {
    * @typedef {Object} EventArgs
    * @property {EventTarget} target
    * @property {AnyEventName} event
-   * @property {EventListener|CustomEventListener} listener
+   * @property {EventListener} listener
    */
 
   /**
    * @param {EventTarget|AnyEventName} arg1
-   * @param {AnyEventName|EventListener|CustomEventListener} arg2
-   * @param {EventListener|CustomEventListener} [arg3]
+   * @param {AnyEventName|EventListener} arg2
+   * @param {EventListener} [arg3]
    * @returns {EventArgs}
    */
   function processEventArgs(arg1, arg2, arg3) {
@@ -4823,10 +4823,6 @@ var htmx = (function() {
 })()
 
 /** @typedef {'get'|'head'|'post'|'put'|'delete'|'connect'|'options'|'trace'|'patch'} HttpVerb */
-
-/**
- * @typedef {(evt: CustomEvent) => void} CustomEventListener
- */
 
 /**
  * @typedef {Object} SwapOptions

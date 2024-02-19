@@ -1,8 +1,8 @@
 declare namespace htmx {
-    function onLoad(callback: (evt: CustomEvent<any>) => void): EventListener | CustomEventListener;
+    function onLoad(callback: (elt: Node) => void): EventListener;
     function process(elt: string | Element): void;
-    function on(arg1: string | EventTarget, arg2: string | EventListener | CustomEventListener, arg3?: EventListener | CustomEventListener): EventListener | CustomEventListener;
-    function off(arg1: string | EventTarget, arg2: string | EventListener | CustomEventListener, arg3?: EventListener | CustomEventListener): EventListener | CustomEventListener;
+    function on(arg1: string | EventTarget, arg2: string | EventListener, arg3?: EventListener): EventListener;
+    function off(arg1: string | EventTarget, arg2: string | EventListener, arg3?: EventListener): EventListener;
     function trigger(elt: string | EventTarget, eventName: string, detail?: any): boolean;
     function ajax(verb: HttpVerb, path: string, context: string | Element | HtmxAjaxHelperContext): Promise<void>;
     function find(eltOrSelector: string | Element | Document | DocumentFragment, selector?: string): Element;
@@ -59,7 +59,6 @@ declare namespace htmx {
     const version: string;
 }
 type HttpVerb = 'get' | 'head' | 'post' | 'put' | 'delete' | 'connect' | 'options' | 'trace' | 'patch';
-type CustomEventListener = (evt: CustomEvent) => void;
 type SwapOptions = {
     select?: string;
     selectOOB?: string;
