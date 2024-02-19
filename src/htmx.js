@@ -1,5 +1,3 @@
-// noinspection EqualityComparisonWithCoercionJS,JSUnusedAssignment,UnnecessaryLocalVariableJS,JSDuplicatedDeclaration,ES6ConvertVarToLetConst,JSDeprecatedSymbols,JSUnusedLocalSymbols,JSIgnoredPromiseFromCall
-
 var htmx = (function() {
   'use strict'
 
@@ -3478,7 +3476,7 @@ var htmx = (function() {
 
   /**
  * @param {Element} elt
- * @param {HtmxSwapStyle} swapInfoOverride
+ * @param {HtmxSwapStyle} [swapInfoOverride]
  * @returns {HtmxSwapSpecification}
  */
   function getSwapSpecification(elt, swapInfoOverride) {
