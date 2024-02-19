@@ -110,7 +110,7 @@ type HtmxAjaxHelperContext = {
     event?: Event;
     handler?: HtmxAjaxHandler;
     target: Element | string;
-    swap?: string;
+    swap?: HtmxSwapStyle;
     values?: any | FormData;
     headers?: Record<string, string>;
     select?: string;

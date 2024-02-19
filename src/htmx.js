@@ -1,4 +1,4 @@
-// noinspection EqualityComparisonWithCoercionJS,JSUnusedAssignment,UnnecessaryLocalVariableJS,JSDuplicatedDeclaration,ES6ConvertVarToLetConst
+// noinspection EqualityComparisonWithCoercionJS,JSUnusedAssignment,UnnecessaryLocalVariableJS,JSDuplicatedDeclaration,ES6ConvertVarToLetConst,JSDeprecatedSymbols,JSUnusedLocalSymbols,JSIgnoredPromiseFromCall
 
 var htmx = (function() {
   'use strict'
@@ -1560,7 +1560,7 @@ var htmx = (function() {
   }
 
   /**
-   * @param {string} swapStyle
+   * @param {HtmxSwapStyle} swapStyle
    * @param {Element} target
    * @returns {boolean}
    */
@@ -1587,6 +1587,7 @@ var htmx = (function() {
    */
   function oobSwap(oobValue, oobElement, settleInfo) {
     let selector = '#' + getRawAttribute(oobElement, 'id')
+    /** @type HtmxSwapStyle */
     let swapStyle = 'outerHTML'
     if (oobValue === 'true') {
       // do nothing
@@ -1669,7 +1670,7 @@ var htmx = (function() {
 
   /**
    * @param {Node} child
-   * @returns {() => void}
+   * @returns {HtmxSettleTask}
    */
   function makeAjaxLoadTask(child) {
     return function() {
@@ -3360,12 +3361,11 @@ var htmx = (function() {
 
     // include any explicit includes
     const includes = findAttributeTargets(elt, 'hx-include')
-    // @ts-ignore
     forEach(includes, function(node) {
-      processInputValue(processed, formData, errors, node, validate)
+      processInputValue(processed, formData, errors, asElement(node), validate)
       // if a non-form is included, include any input values within it
       if (!matches(node, 'form')) {
-        forEach(node.querySelectorAll(INPUT_SELECTOR), function(descendant) {
+        forEach(asQueryable(node).querySelectorAll(INPUT_SELECTOR), function(descendant) {
           processInputValue(processed, formData, errors, descendant, validate)
         })
       }
@@ -4901,7 +4901,7 @@ var htmx = (function() {
  * @property {Event} [event]
  * @property {HtmxAjaxHandler} [handler]
  * @property {Element|string} target
- * @property {string} [swap]
+ * @property {HtmxSwapStyle} [swap]
  * @property {Object|FormData} [values]
  * @property {Record<string,string>} [headers]
  * @property {string} [select]
