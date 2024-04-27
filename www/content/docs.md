@@ -1656,7 +1656,9 @@ listed below:
 | `htmx.config.scrollIntoViewOnBoost`   | defaults to `true`, whether or not the target of a boosted element is scrolled into the viewport. If `hx-target` is omitted on a boosted element, the target defaults to `body`, causing the page to scroll to the top. |
 | `htmx.config.triggerSpecsCache`       | defaults to `null`, the cache to store evaluated trigger specifications into, improving parsing performance at the cost of more memory usage. You may define a simple object to use a never-clearing cache, or implement your own system using a [proxy object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Proxy) |
 | `htmx.config.allowNestedOobSwaps`     | defaults to `true`, whether to process OOB swaps on elements that are nested within the main response element. See [Nested OOB Swaps](@/attributes/hx-swap-oob.md#nested-oob-swaps). |
-
+| `htmx.config.defaultErrorSwapStyle`   | defaults to `none`, htmx will swap content on error responses by default using the specified [swap method](@/attributes/hx-error-swap.md)                                  |
+| `htmx.config.defaultErrorTarget`      | defaults to `mirror`, htmx will swap content on error responses by default using the specified [swap target](@/attributes/hx-error-target.md)                              |
+| `htmx.config.httpErrorCodesToSwap`    | defaults to `[]`, if this array of [HTTP status codes](https://developer.mozilla.org/docs/Web/HTTP/Status) is not empty, htmx will use it as a whitelist and won't swap error responses with an unlisted status code           |
 </div>
 
 You can set them directly in javascript, or you can use a `meta` tag:

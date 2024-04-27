@@ -1,109 +1,29 @@
-[![</> htmx](https://raw.githubusercontent.com/bigskysoftware/htmx/master/www/static/img/htmx_logo.1.png "high power tools for HTML")](https://htmx.org)
+# See [htmx base repo](https://github.com/bigskysoftware/htmx)
 
-*high power tools for HTML*
-
-[![Discord](https://img.shields.io/discord/725789699527933952)](https://htmx.org/discord)
-[![Netlify](https://img.shields.io/netlify/dba3fc85-d9c9-476a-a35a-e52a632cef78)](https://app.netlify.com/sites/htmx/deploys)
-[![Bundlephobia](https://badgen.net/bundlephobia/dependency-count/htmx.org)](https://bundlephobia.com/result?p=htmx.org)
-[![Bundlephobia](https://badgen.net/bundlephobia/minzip/htmx.org)](https://bundlephobia.com/result?p=htmx.org)
-
-## introduction
-
-htmx allows you to access  [AJAX](https://htmx.org/docs#ajax), [CSS Transitions](https://htmx.org/docs#css_transitions),
-[WebSockets](https://htmx.org/docs#websockets) and [Server Sent Events](https://htmx.org/docs#sse)
-directly in HTML, using [attributes](https://htmx.org/reference#attributes), so you can build
-[modern user interfaces](https://htmx.org/examples) with the [simplicity](https://en.wikipedia.org/wiki/HATEOAS) and
-[power](https://www.ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm) of hypertext
-
-htmx is small ([~14k min.gz'd](https://unpkg.com/htmx.org/dist/)),
-[dependency-free](https://github.com/bigskysoftware/htmx/blob/master/package.json),
-[extendable](https://htmx.org/extensions) &
-IE11 compatible
-
-## motivation
-
-* Why should only `<a>` and `<form>` be able to make HTTP requests?
-* Why should only `click` & `submit` events trigger them?
-* Why should only GET & POST be available?
-* Why should you only be able to replace the *entire* screen?
-
-By removing these arbitrary constraints htmx completes HTML as a
-[hypertext](https://en.wikipedia.org/wiki/Hypertext)
-
-## quick start
-
-```html
-  <script src="https://unpkg.com/htmx.org@2.0.0-beta3"></script>
-  <!-- have a button POST a click via AJAX -->
-  <button hx-post="/clicked" hx-swap="outerHTML">
-    Click Me
-  </button>
-```
-
-The [`hx-post`](https://htmx.org/attributes/hx-post) and [`hx-swap`](https://htmx.org/attributes/hx-swap) attributes tell htmx:
-
-> "When a user clicks on this button, issue an AJAX request to /clicked, and replace the entire button with the response"
-
-htmx is the successor to [intercooler.js](http://intercoolerjs.org)
-
-### installing as a node package
-
-To install using npm:
-
-```
-npm install htmx.org --save
-```
-
-Note there is an old broken package called `htmx`.  This is `htmx.org`.
-
-## website & docs
-
-* <https://htmx.org>
-* <https://htmx.org/docs>
-
-## contributing
-Want to contribute? Check out our [contribution guidelines](CONTRIBUTING.md)
-
-No time? Then [become a sponsor](https://github.com/sponsors/bigskysoftware#sponsors)
-
-### hacking guide
-
-To develop htmx locally, you will need to install the development dependencies.
-
-Run:
-
-```
-npm install
-```
-
-Then, run a web server in the root.
-
-This is easiest with:
-
-```
-npx serve
-```
-
-You can then run the test suite by navigating to:
-
-<http://0.0.0.0:3000/test/>
-
-At this point you can modify `/src/htmx.js` to add features, and then add tests in the appropriate area under `/test`.
-
-* `/test/index.html` - the root test page from which all other tests are included
-* `/test/attributes` - attribute specific tests
-* `/test/core` - core functionality tests
-* `/test/core/regressions.js` - regression tests
-* `/test/ext` - extension tests
-* `/test/manual` - manual tests that cannot be automated
-
-htmx uses the [mocha](https://mochajs.org/) testing framework, the [chai](https://www.chaijs.com/) assertion framework
-and [sinon](https://sinonjs.org/releases/v9/fake-xhr-and-server/) to mock out AJAX requests.  They are all OK.
-
-You can also run live tests and demo of the WebSockets and Server-Side Events extensions with `npm run ws-tests`
-
-## haiku
-
-*javascript fatigue:<br/>
-longing for a hypertext<br/>
-already in hand*
+# Changes in this fork
+## Fixes
+- Fix outerHTML swap if parent is null (i.e. too fast clicking for example) : an error would be fired trying to access the parent's properties and block further interactions with the element => now ignored when parent is null
+- Values passed along a `DELETE` request are encoded as URL parameters by default _(as for a `GET` request)_ [as per the HTTP specs](https://www.rfc-editor.org/rfc/rfc9110.html#name-delete), instead of being sent as form data
+- [`htmx.ajax()`](https://htmx.org/api/#ajax) now correctly handles files passed to it through the `context.values` property _(htmx would by default override the content type to `application/x-www-form-urlencoded` instead of letting [xhr.send](https://xhr.spec.whatwg.org/#the-send()-method) deduce the multipart/form-data content type itself + it would only use the values of the [`hx-encoding`](https://htmx.org/attributes/hx-encoding/) and [`enctype`](https://developer.mozilla.org/en/docs/Web/API/HTMLFormElement/enctype), thus ignore the fact that the payload contains file input values and should be treated as `multipart/form-data`)_
+## Changes
+- When a checkbox input doesn't define a [`value`](https://developer.mozilla.org/en/docs/Web/HTML/Element/Input/checkbox#value) attribute, the [`checked`](https://developer.mozilla.org/en/docs/Web/HTML/Element/Input/checkbox#checked) attribute is used instead when building the request payload, which results in proper boolean values to be parsed by the backend, rather than the default `on` value that seems unusable to me
+- Unchecked checkboxes that don't define a [`value`](https://developer.mozilla.org/en/docs/Web/HTML/Element/Input/checkbox#value) attribute aren't excluded anymore from request payload _(I needed this for some PATCH requests for example, where I require an explicit true/false value for a given parameter to toggle a bool in the database)_
+- The htmx-indicator is not hidden on request's response if the response has a `HX-Redirect` header set (just a personal visual preference)
+- If the target override specified to [`htmx.ajax()`](https://htmx.org/api/#ajax) can't be found, an error is thrown _(instead of the htmx default implementation that crawls the hierarchy to find the first `hx-target` specified on a parent element as a fallback)_
+- When an htmx error is logged, the `detail` context object passed along in the internal functions is now included in the log, for an easier debugging. This way, a `hx-targetError` for example, will also log the actual target that htmx was trying to retrieve
+- When using the [`hx-swap`](https://htmx.org/attributes/hx-swap/) attribute set to `"none"`, it's no longer required to have a value defined for the [`hx-target`](https://htmx.org/attributes/hx-target/) attribute _(in this case, simply no element will trigger the [htmx:beforeSwap](https://htmx.org/events/#htmx:beforeSwap) event, nor being added/removed the [swapping class](https://htmx.org/reference/#classes))_
+- A warning, instead of an error, is fired for bad selectors in [`hx-include`](https://htmx.org/attributes/hx-include/) and [`hx-indicator`](https://htmx.org/attributes/hx-indicator/) attributes
+## Additions
+- `hx-error-target` and `hx-error-swap` attributes to allow swapping server's reponse on error (i.e request with a `status >= 300`). Those attributes behave exactly like, respectively, [hx-target](https://htmx.org/attributes/hx-target/) and [hx-swap](https://htmx.org/attributes/hx-swap/). Using the `"mirror"` value will have them act as their standard counterpart
+- [`htmx.ajax()`](https://htmx.org/api/#ajax) supports 2 additional properties, `errorTarget` and `errorSwap` in the `context` argument, to override the error target & error swapping behaviour. Those follow the syntax of, respectively, `target` and `swap` properties. `"mirror"` is also supported there.
+- `htmx.config.defaultErrorTarget` and `htmx.config.defaultErrorSwapStyle` properties to configure error swapping default behavior. `defaultErrorTarget` defaults to `"mirror"` and `defaultErrorSwapStyle` defaults to `"none"`
+- `htmx.config.httpErrorCodesToSwap` property to whitelist error codes for which to enable error swapping for. Defaults to an empty array, which means all error codes would be swapped, depending on the error swapping strategy
+## Removals
+- Removed the settling phase altogether, as it was messing with my [MutationObserver](https://developer.mozilla.org/en/docs/Web/API/MutationObserver) callbacks to apply style to newly added nodes _(for example a line that should be positionned at current local time with a line of JS in a calendar)_, and I had no use for this settling anyway
+- Removed the `hx-select` feature as I don't use it at all, and don't like it either. Imho it shouldn't be used as it encourages reusing, by laziness, endpoints that send back a huge HTML, instead of making specific endpoints to generate & return only the parts they need, resulting in wasted resources spent generating unused content, and heavier responses that take longer to fetch.
+- Removed `hx-on` feature altogether as I don't use it at all, plus it results in additional _(and useless in my case)_ queries against the DOM, and imho encourages [bad practices](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#inline_event_handlers_%E2%80%94_dont_use_these)
+- Removed `hx-boost` as I never use it and don't like anyway
+## Performance
+- Added `readLayout` and `writeLayout` API methods, to execute layout read/write operations while avoiding [layout thrashing](https://developers.google.com/web/fundamentals/performance/rendering/avoid-large-complex-layouts-and-layout-thrashing#avoid_layout_thrashing). htmx is also using them internally for its own DOM mutations and accesses. This sytem can be disabled by setting `htmx.config.layoutQueuesEnabled` to `false` _(defaults to `true`)_, in which case the callbacks passed to `readLayout` and `writeLayout` are immediately executed
+- Added `htmx.config.cleanUpThrottlingEnabled` property that, when set to `true` _(defaults to `false`)_, will make htmx's clean up process run in chunks of `4 ms` of work instead of cleaning up the entire source element's hierarchy in one go. This comes in handy for large hierarchies where htmx could spend hundreds of ms cleaning elements up recursively, freezing the browser's rendering. Remaining work is now postponed to the next animation frame when spending more than `4 ms` computing
+- Added `htmx.config.disabledEvents` property that can be used to disable certain htmx events _(such as the `htmx:beforeProcessNode` and `htmx:afterProcessNode` events that can take hundreds of ms to fire for each element, when swapping very large hierarchies)_. For ex setting it to `{ "htmx:afterRequest": true }` would result in no `htmx:afterRequest` event being fired at all

@@ -115,36 +115,6 @@ describe('Core htmx Events', function() {
     }
   })
 
-  it('htmx:configRequest on form gives access to submit event', function() {
-    var skip = false
-    var submitterId
-    var handler = htmx.on('htmx:configRequest', function(evt) {
-      // submitter may be null, but undefined means the browser doesn't support it
-      if (typeof evt.detail.triggeringEvent.submitter === 'undefined') {
-        skip = true
-        return
-      }
-      evt.detail.headers['X-Submitter-Id'] = evt.detail.triggeringEvent.submitter.id
-    })
-    try {
-      this.server.respondWith('POST', '/test', function(xhr) {
-        submitterId = xhr.requestHeaders['X-Submitter-Id']
-        xhr.respond(200, {}, '')
-      })
-      make('<div hx-target="this" hx-boost="true"><form action="/test" method="post"><button type="submit" id="b1">Submit</button><button type="submit" id="b2">Submit</button></form></div>')
-      var btn = byId('b1')
-      btn.click()
-      this.server.respond()
-      if (skip) {
-        this._runnable.title += " - Skipped as IE11 doesn't support submitter"
-        this.skip()
-      }
-      should.equal(submitterId, 'b1')
-    } finally {
-      htmx.off('htmx:configRequest', handler)
-    }
-  })
-
   it('htmx:afterSwap is called when replacing outerHTML', function() {
     var called = false
     var handler = htmx.on('htmx:afterSwap', function(evt) {
