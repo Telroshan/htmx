@@ -339,4 +339,47 @@ describe('Core htmx Parameter Handling', function() {
     var vals = htmx._('getInputValues')(input, 'get').values
     vals.foo.should.equal('true')
   })
+
+  it('Unticked checkbox with value (in form) does not include value', function() {
+    var form = make('<form><input type="checkbox" name="foo" value="bar"/></form>')
+    var vals = htmx._('getInputValues')(form, 'get').values
+    should.equal(vals.foo, undefined)
+  })
+
+  it('Value-less unticked checkbox (in form) includes false value', function() {
+    var form = make('<form><input type="checkbox" name="foo"/></form>')
+    var vals = htmx._('getInputValues')(form, 'get').values
+    vals.foo.should.equal('false')
+  })
+
+  it('Value-less ticked checkbox (in form) includes true value', function() {
+    var form = make('<form><input type="checkbox" name="foo" checked/></form>')
+    var vals = htmx._('getInputValues')(form, 'get').values
+    vals.foo.should.equal('true')
+  })
+
+  it('Multiple checkboxes (in form) work', function() {
+    var form = make('<form>' +
+      '<input type="checkbox" name="foo" checked/>' +
+      '<input type="checkbox" name="foo"/>' +
+      '<input type="checkbox" name="foo" checked/>' +
+
+      '<input type="checkbox" name="test" checked/>' +
+      '<input type="checkbox" name="test" value="test1" checked/>' +
+      '<input type="checkbox" name="test" value="test2"/>' +
+      '<input type="checkbox" name="test"/>' +
+
+      '<input type="checkbox" name="test2" value="test1" checked/>' +
+      '<input type="checkbox" name="test2" checked/>' +
+      '<input type="checkbox" name="test2" value="test2"/>' +
+      '<input type="checkbox" name="test2"/>' +
+
+      '<input type="checkbox" name="bar" value="test" checked/>' +
+      '</form>')
+    var vals = htmx._('getInputValues')(form, 'get').values
+    vals.foo.should.deep.equal(['true', 'false', 'true'])
+    vals.test.should.deep.equal(['true', 'test1', 'false'])
+    vals.test2.should.deep.equal(['test1', 'true', 'false'])
+    vals.bar.should.equal('test')
+  })
 })

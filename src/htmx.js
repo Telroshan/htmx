@@ -3251,6 +3251,14 @@ var htmx = (function() {
   }
 
   /**
+   * @param {Element} elt
+   * @returns {boolean}
+   */
+  function isBooleanCheckbox(elt) {
+    return elt instanceof HTMLInputElement && elt.getAttribute('type') === 'checkbox' && typeof elt.getAttribute('value') !== 'string'
+  }
+
+  /**
    * @param {Element[]} processed
    * @param {FormData} formData
    * @param {HtmxElementValidationError[]} errors
@@ -3274,8 +3282,8 @@ var htmx = (function() {
       if (elt instanceof HTMLInputElement && elt.files) {
         value = toArray(elt.files)
       }
-      if (elt instanceof HTMLInputElement && elt.getAttribute('type') === 'checkbox' && typeof elt.getAttribute('value') !== 'string') {
-        value = elt.checked
+      if (isBooleanCheckbox(elt)) {
+        value = (/** @type HTMLInputElement */ (elt)).checked
       }
       addValueToFormData(name, value, formData)
       if (validate) {
@@ -3283,21 +3291,40 @@ var htmx = (function() {
       }
     }
     if (elt instanceof HTMLFormElement) {
+      const namesWithBooleanCheckboxes = {}
       forEach(elt.elements, function(input) {
         if (processed.indexOf(input) >= 0) {
           // The input has already been processed and added to the values, but the FormData that will be
           //  constructed right after on the form, will include it once again. So remove that input's value
           //  now to avoid duplicates
-          removeValueFromFormData(input.name, input.value, formData)
+          if (!isBooleanCheckbox(input)) {
+            removeValueFromFormData(input.name, input.value, formData)
+          } else {
+            removeValueFromFormData(input.name, input.checked.toString(), formData)
+          }
         } else {
           processed.push(input)
         }
         if (validate) {
           validateElement(input, errors)
         }
+        if (isBooleanCheckbox(input)) {
+          namesWithBooleanCheckboxes[input.name] = true
+        }
       })
       new FormData(elt).forEach(function(value, name) {
-        addValueToFormData(name, value, formData)
+        if (!namesWithBooleanCheckboxes[name]) {
+          addValueToFormData(name, value, formData)
+        }
+      })
+      forEach(elt.elements, function(input) {
+        if (namesWithBooleanCheckboxes[input.name]) {
+          if (isBooleanCheckbox(input)) {
+            addValueToFormData(input.name, input.checked.toString(), formData)
+          } else if (input.type !== 'checkbox' || input.checked) {
+            addValueToFormData(input.name, input.value, formData)
+          }
+        }
       })
     }
   }
