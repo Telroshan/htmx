@@ -36,6 +36,8 @@ declare namespace htmx {
         const allowEval: boolean;
         const allowScriptTags: boolean;
         const inlineScriptNonce: string;
+        const inlineStyleNonce: string;
+        const attributesToSettle: string[];
         const withCredentials: boolean;
         const timeout: number;
         const wsReconnectDelay: "full-jitter" | ((retryCount: number) => number);
@@ -48,26 +50,19 @@ declare namespace htmx {
         const methodsThatUseUrlParams: (HttpVerb)[];
         const selfRequestsOnly: boolean;
         const ignoreTitle: boolean;
+        const scrollIntoViewOnBoost: boolean;
         const triggerSpecsCache: any | null;
         const disableInheritance: boolean;
+        const responseHandling: HtmxResponseHandlingConfig[];
         const allowNestedOobSwaps: boolean;
-        const defaultErrorSwapStyle: HtmxSwapStyle;
-        const defaultErrorTarget: string;
-        const httpErrorCodesToSwap: number[];
-        const layoutQueuesEnabled: boolean;
-        const cleanUpThrottlingEnabled: boolean;
-        const disabledEvents: any;
     }
     const parseInterval: (str: string) => number;
     const _: (str: string) => any;
-    const readLayout: (callback: any) => void;
-    const writeLayout: (callback: any) => void;
-    const querySelectorAllExt: (elt: string | Element | Node | Document, selector: string, global?: boolean) => (Node | Window)[];
-    const querySelectorExt: (eltOrSelector: string | Node, selector?: string) => Node | Window;
     const version: string;
 }
 type HttpVerb = 'get' | 'head' | 'post' | 'put' | 'delete' | 'connect' | 'options' | 'trace' | 'patch';
 type SwapOptions = {
+    select?: string;
     selectOOB?: string;
     eventInfo?: any;
     anchor?: string;
@@ -76,10 +71,9 @@ type SwapOptions = {
     afterSettleCallback?: swapCallback;
 };
 type swapCallback = () => any;
-type HtmxSwapStyle = 'innerHTML' | 'outerHTML' | 'beforebegin' | 'afterbegin' | 'beforeend' | 'afterend' | 'delete' | 'none' | 'mirror' | string;
+type HtmxSwapStyle = 'innerHTML' | 'outerHTML' | 'beforebegin' | 'afterbegin' | 'beforeend' | 'afterend' | 'delete' | 'none' | string;
 type HtmxSwapSpecification = {
     swapStyle: HtmxSwapStyle;
-    defaultSwapStyle?: HtmxSwapStyle;
     swapDelay: number;
     settleDelay: number;
     transition?: boolean;
@@ -121,12 +115,12 @@ type HtmxAjaxHelperContext = {
     handler?: HtmxAjaxHandler;
     target: Element | string;
     swap?: HtmxSwapStyle;
-    errorTarget?: Element | string;
-    errorSwap?: HtmxSwapStyle;
     values?: any | FormData;
     headers?: Record<string, string>;
+    select?: string;
 };
 type HtmxRequestConfig = {
+    boosted: boolean;
     useUrlParams: boolean;
     formData: FormData;
     /**
@@ -152,6 +146,8 @@ type HtmxResponseInfo = {
     target: Element;
     requestConfig: HtmxRequestConfig;
     etc: HtmxAjaxEtc;
+    boosted: boolean;
+    select: string;
     pathInfo: {
         requestPath: string;
         finalRequestPath: string;
@@ -160,25 +156,34 @@ type HtmxResponseInfo = {
     };
     failed?: boolean;
     successful?: boolean;
-    defaultHandler: (elt: Element, responseInfo: HtmxResponseInfo) => void;
 };
 type HtmxAjaxEtc = {
     returnPromise?: boolean;
     handler?: HtmxAjaxHandler;
+    select?: string;
     targetOverride?: Element;
     swapOverride?: HtmxSwapStyle;
-    errorTargetOverride?: Element;
-    errorSwapOverride?: HtmxSwapStyle;
     headers?: Record<string, string>;
     values?: any | FormData;
     credentials?: boolean;
     timeout?: number;
+};
+type HtmxResponseHandlingConfig = {
+    code?: string;
+    swap: boolean;
+    error?: boolean;
+    ignoreTitle?: boolean;
+    select?: string;
+    target?: string;
+    swapOverride?: string;
+    event?: string;
 };
 type HtmxBeforeSwapDetails = HtmxResponseInfo & {
     shouldSwap: boolean;
     serverResponse: any;
     isError: boolean;
     ignoreTitle: boolean;
+    selectOverride: string;
 };
 type HtmxAjaxHandler = (elt: Element, responseInfo: HtmxResponseInfo) => any;
 type HtmxSettleTask = (() => void);

@@ -165,6 +165,12 @@ var htmx = (function() {
        */
       inlineScriptNonce: '',
       /**
+       * If set, the nonce will be added to inline styles.
+       * @type string
+       * @default ''
+       */
+      inlineStyleNonce: '',
+      /**
        * Allow cross-site Access-Control requests using credentials such as cookies, authorization headers or TLS client certificates.
        * @type boolean
        * @default false
@@ -293,7 +299,7 @@ var htmx = (function() {
     querySelectorAllExt: null,
     /** @type {typeof querySelectorExt} */
     querySelectorExt: null,
-    version: '2.0.0-beta3'
+    version: '2.0.0-beta4'
   }
   // Tsc madness part 2
   htmx.onLoad = onLoadHelper
@@ -4852,8 +4858,9 @@ var htmx = (function() {
 
   function insertIndicatorStyles() {
     if (htmx.config.includeIndicatorStyles !== false) {
+      const nonceAttribute = htmx.config.inlineStyleNonce ? ` nonce="${htmx.config.inlineStyleNonce}"` : ''
       getDocument().head.insertAdjacentHTML('beforeend',
-        '<style>\
+        '<style' + nonceAttribute + '>\
       .' + htmx.config.indicatorClass + '{opacity:0}\
       .' + htmx.config.requestClass + ' .' + htmx.config.indicatorClass + '{opacity:1; transition: opacity 200ms ease-in;}\
       .' + htmx.config.requestClass + '.' + htmx.config.indicatorClass + '{opacity:1; transition: opacity 200ms ease-in;}\
