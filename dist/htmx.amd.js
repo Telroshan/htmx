@@ -3608,10 +3608,9 @@ var htmx = (function() {
    * @param {XMLHttpRequest} xhr
    * @param {Element} elt
    * @param {FormData} filteredParameters
-   * @param {boolean} forceUseFormData
    * @returns {*|string|null}
    */
-  function encodeParamsForBody(xhr, elt, filteredParameters, forceUseFormData) {
+  function encodeParamsForBody(xhr, elt, filteredParameters) {
     let encodedParameters = null
     withExtensions(elt, function(extension) {
       if (encodedParameters == null) {
@@ -3621,7 +3620,7 @@ var htmx = (function() {
     if (encodedParameters != null) {
       return encodedParameters
     } else {
-      if (forceUseFormData || usesFormData(elt, filteredParameters)) {
+      if (usesFormData(elt, filteredParameters)) {
         // Force conversion to an actual FormData object in case filteredParameters is a formDataProxy
         // See https://github.com/bigskysoftware/htmx/issues/2317
         return overrideFormData(new FormData(), formDataFromObject(filteredParameters))
@@ -3842,8 +3841,7 @@ var htmx = (function() {
             swapOverride: context.swap,
             errorTargetOverride: resolveTarget(context.errorTarget),
             errorSwapOverride: context.errorSwap,
-            returnPromise: true,
-            forceUseFormData: context.forceUseFormData
+            returnPromise: true
           })
       }
     } else {
@@ -4202,7 +4200,7 @@ var htmx = (function() {
 
     let headers = getHeaders(elt, target, promptResponse)
 
-    if (verb !== 'get' && !usesFormData(elt, filteredFormData) && !etc.forceUseFormData) {
+    if (verb !== 'get' && !usesFormData(elt, filteredFormData)) {
       headers['Content-Type'] = 'application/x-www-form-urlencoded'
     }
 
@@ -4399,7 +4397,7 @@ var htmx = (function() {
       })
     })
     triggerEvent(elt, 'htmx:beforeSend', responseInfo)
-    const params = useUrlParams ? null : encodeParamsForBody(xhr, elt, filteredFormData, etc.forceUseFormData)
+    const params = useUrlParams ? null : encodeParamsForBody(xhr, elt, filteredFormData)
     xhr.send(params)
     return promise
   }
@@ -5017,7 +5015,6 @@ var htmx = (function() {
  * @property {HtmxSwapStyle} [errorSwap]
  * @property {Object|FormData} [values]
  * @property {Record<string,string>} [headers]
- * @property {boolean} [forceUseFormData] Force the request to be a multipart/form-data request
  */
 
 /**
@@ -5061,7 +5058,6 @@ var htmx = (function() {
  * @property {Object|FormData} [values]
  * @property {boolean} [credentials]
  * @property {number} [timeout]
- * @property {boolean} [forceUseFormData] Force the request to be a multipart/form-data request
  */
 
 /**

@@ -126,10 +126,6 @@ type HtmxAjaxHelperContext = {
     errorSwap?: HtmxSwapStyle;
     values?: any | FormData;
     headers?: Record<string, string>;
-    /**
-     * Force the request to be a multipart/form-data request
-     */
-    forceUseFormData?: boolean;
 };
 type HtmxRequestConfig = {
     useUrlParams: boolean;
@@ -178,10 +174,6 @@ type HtmxAjaxEtc = {
     values?: any | FormData;
     credentials?: boolean;
     timeout?: number;
-    /**
-     * Force the request to be a multipart/form-data request
-     */
-    forceUseFormData?: boolean;
 };
 type HtmxBeforeSwapDetails = HtmxResponseInfo & {
     shouldSwap: boolean;
