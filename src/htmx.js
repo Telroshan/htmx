@@ -3136,10 +3136,12 @@ var htmx = (function() {
     if (indicators == null) {
       indicators = [elt]
     }
-    forEach(indicators, function(ic) {
-      const internalData = getInternalData(ic)
-      internalData.requestCount = (internalData.requestCount || 0) + 1
-      ic.classList.add.call(ic.classList, htmx.config.requestClass)
+    htmx.writeLayout(function() {
+      forEach(indicators, function(ic) {
+        const internalData = getInternalData(ic)
+        internalData.requestCount = (internalData.requestCount || 0) + 1
+        ic.classList.add.call(ic.classList, htmx.config.requestClass)
+      })
     })
     return indicators
   }
@@ -3166,19 +3168,21 @@ var htmx = (function() {
    * @param {Element[]} disabled
    */
   function removeRequestIndicators(indicators, disabled) {
-    forEach(indicators, function(ic) {
-      const internalData = getInternalData(ic)
-      internalData.requestCount = (internalData.requestCount || 0) - 1
-      if (internalData.requestCount === 0) {
-        ic.classList.remove.call(ic.classList, htmx.config.requestClass)
-      }
-    })
-    forEach(disabled, function(disabledElement) {
-      const internalData = getInternalData(disabledElement)
-      internalData.requestCount = (internalData.requestCount || 0) - 1
-      if (internalData.requestCount === 0) {
-        disabledElement.removeAttribute('disabled')
-      }
+    htmx.writeLayout(function() {
+      forEach(indicators, function(ic) {
+        const internalData = getInternalData(ic)
+        internalData.requestCount = (internalData.requestCount || 0) - 1
+        if (internalData.requestCount === 0) {
+          ic.classList.remove.call(ic.classList, htmx.config.requestClass)
+        }
+      })
+      forEach(disabled, function(disabledElement) {
+        const internalData = getInternalData(disabledElement)
+        internalData.requestCount = (internalData.requestCount || 0) - 1
+        if (internalData.requestCount === 0) {
+          disabledElement.removeAttribute('disabled')
+        }
+      })
     })
   }
 
