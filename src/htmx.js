@@ -299,7 +299,7 @@ var htmx = (function() {
     querySelectorAllExt: null,
     /** @type {typeof querySelectorExt} */
     querySelectorExt: null,
-    version: '2.0.0-beta4'
+    version: '2.0.0'
   }
   // Tsc madness part 2
   htmx.onLoad = onLoadHelper
@@ -1746,6 +1746,9 @@ var htmx = (function() {
   function swapOuterHTML(target, fragment, settleInfo) {
     if (!target.parentNode) {
       return
+    }
+    if (target instanceof Element && target.tagName === 'BODY') { // special case the body to innerHTML because DocumentFragments can't contain a body elt unfortunately
+      return swapInnerHTML(target, fragment, settleInfo)
     }
     /** @type {Node} */
     let newElt

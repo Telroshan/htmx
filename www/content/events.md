@@ -184,10 +184,11 @@ the AJAX request.  If you call `preventDefault()` on the event, it will not issu
 object contains a function, `evt.detail.issueRequest()`, that can be used to issue the actual AJAX request at a
 later point.  Combining these two features allows you to create an asynchronous confirmation dialog.
 
-Here is an example using [sweet alert](https://sweetalert.js.org/guides/):
+Here is an example using [sweet alert](https://sweetalert.js.org/guides/) on any element with a `confirm-with-sweet-alert='true'` attribute on it:
 
 ```javascript
 document.body.addEventListener('htmx:confirm', function(evt) {
+  if (evt.target.matches("[confirm-with-sweet-alert='true']")) {
     evt.preventDefault();
     swal({
       title: "Are you sure?",
@@ -199,7 +200,8 @@ document.body.addEventListener('htmx:confirm', function(evt) {
       if (confirmed) {
         evt.detail.issueRequest();
       }
-   });
+    });
+  }
 });
 ```
 
@@ -296,9 +298,9 @@ This event is triggered as part of an [out of band swap](@/docs.md#oob_swaps) an
 ##### Details
 
 * `detail.elt` - the element that dispatched the request
-* `detail.xhr` - the `XMLHttpRequest`
-* `detail.target` - the target of the request
-* `detail.requestConfig` - the configuration of the AJAX request
+* `detail.shouldSwap` - if the content will be swapped (defaults to `true`)
+* `detail.target` - the target of the swap
+* `detail.fragment` - the response fragment
 
 ### Event - `htmx:oobBeforeSwap` {#htmx:oobBeforeSwap}
 
@@ -307,10 +309,9 @@ This event is triggered as part of an [out of band swap](@/docs.md#oob_swaps) an
 ##### Details
 
 * `detail.elt` - the element that dispatched the request
-* `detail.xhr` - the `XMLHttpRequest`
-* `detail.requestConfig` - the configuration of the AJAX request
-* `detail.shouldSwap` - if the content will be swapped (defaults to `false` for non-200 response codes)
+* `detail.shouldSwap` - if the content will be swapped (defaults to `true`)
 * `detail.target` - the target of the swap
+* `detail.fragment` - the response fragment
 
 ### Event - `htmx:oobErrorNoTarget` {#htmx:oobErrorNoTarget}
 
