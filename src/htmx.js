@@ -1335,6 +1335,10 @@ var htmx = (function() {
     return htmx.config.layoutQueuesEnabled
   }
 
+  /**
+   * Executes callback on the next layout read cycle
+   * @param {() => void} callback
+   */
   function readLayout(callback) {
     if (areLayoutQueuesEnabled()) {
       layoutReadsQueue.push(callback)
@@ -1349,6 +1353,10 @@ var htmx = (function() {
     }
   }
 
+  /**
+   * Executes callback on the next layout write cycle
+   * @param {() => void} callback
+   */
   function writeLayout(callback) {
     if (areLayoutQueuesEnabled()) {
       layoutWritesQueue.push(callback)

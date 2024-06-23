@@ -61,8 +61,8 @@ declare namespace htmx {
     }
     const parseInterval: (str: string) => number;
     const _: (str: string) => any;
-    const readLayout: (callback: any) => void;
-    const writeLayout: (callback: any) => void;
+    const readLayout: (callback: () => void) => void;
+    const writeLayout: (callback: () => void) => void;
     const querySelectorAllExt: (elt: string | Element | Node | Document, selector: string, global?: boolean) => (Node | Window)[];
     const querySelectorExt: (eltOrSelector: string | Node, selector?: string) => Node | Window;
     const version: string;
