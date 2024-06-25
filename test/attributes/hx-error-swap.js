@@ -464,4 +464,27 @@ describe('hx-error-swap attribute', function() {
     this.server.respond()
     div.innerHTML.should.equal('Clicked!')
   })
+
+  it('default error swap style correctly overrides hx-swap', function() {
+    var initialSwapStyle = htmx.config.defaultErrorSwapStyle
+    htmx.config.defaultErrorSwapStyle = 'innerHTML'
+    var initialTarget = htmx.config.defaultErrorTarget
+    htmx.config.defaultErrorTarget = '#errorContainer'
+    try {
+      this.server.respondWithRandomError('GET', '/test', 'Error!')
+
+      var div = make('<div><button id="b1" hx-get="/test" hx-target="this" hx-swap="outerHTML">Initial</button></div>')
+      var b1 = byId('b1')
+      var errorContainer = make('<div id="errorContainer"></div>')
+      b1.click()
+      this.server.respond()
+
+      div.nextElementSibling.should.equal(errorContainer)
+      div.firstElementChild.should.equal(b1)
+      errorContainer.innerHTML.should.equal('Error!')
+    } finally {
+      htmx.config.defaultErrorSwapStyle = initialSwapStyle
+      htmx.config.defaultErrorTarget = initialTarget
+    }
+  })
 })

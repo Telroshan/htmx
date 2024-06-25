@@ -4660,11 +4660,12 @@ var htmx = (function() {
       }
       let defaultSwapStyle = htmx.config.defaultSwapStyle
       if (!swapOverride && isStandardErrorSwap) {
-        if (htmx.config.defaultErrorSwapStyle !== 'mirror') {
-          defaultSwapStyle = htmx.config.defaultErrorSwapStyle
+        const defaultErrorSwapStyle = htmx.config.defaultErrorSwapStyle
+        if (defaultErrorSwapStyle !== 'mirror') {
+          defaultSwapStyle = defaultErrorSwapStyle
         }
-        swapOverride = getClosestAttributeValue(elt, 'hx-error-swap')
-        if ((swapOverride && swapOverride === 'mirror') || (!swapOverride && htmx.config.defaultErrorSwapStyle === 'mirror')) {
+        swapOverride = getClosestAttributeValue(elt, 'hx-error-swap') || defaultErrorSwapStyle
+        if ((swapOverride && swapOverride === 'mirror') || (!swapOverride && defaultErrorSwapStyle === 'mirror')) {
           swapOverride = getClosestAttributeValue(elt, 'hx-swap') || htmx.config.defaultSwapStyle
         }
       }
