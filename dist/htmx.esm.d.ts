@@ -1,7 +1,6 @@
 export default htmx;
 export type HttpVerb = "get" | "head" | "post" | "put" | "delete" | "connect" | "options" | "trace" | "patch";
 export type SwapOptions = {
-    select?: string;
     selectOOB?: string;
     eventInfo?: any;
     anchor?: string;
@@ -10,9 +9,10 @@ export type SwapOptions = {
     afterSettleCallback?: swapCallback;
 };
 export type swapCallback = () => any;
-export type HtmxSwapStyle = "innerHTML" | "outerHTML" | "beforebegin" | "afterbegin" | "beforeend" | "afterend" | "delete" | "none" | string;
+export type HtmxSwapStyle = "innerHTML" | "outerHTML" | "beforebegin" | "afterbegin" | "beforeend" | "afterend" | "delete" | "none" | "mirror" | string;
 export type HtmxSwapSpecification = {
     swapStyle: HtmxSwapStyle;
+    defaultSwapStyle?: HtmxSwapStyle;
     swapDelay: number;
     settleDelay: number;
     transition?: boolean;
@@ -54,12 +54,12 @@ export type HtmxAjaxHelperContext = {
     handler?: HtmxAjaxHandler;
     target?: Element | string;
     swap?: HtmxSwapStyle;
+    errorTarget?: Element | string;
+    errorSwap?: HtmxSwapStyle;
     values?: any | FormData;
     headers?: Record<string, string>;
-    select?: string;
 };
 export type HtmxRequestConfig = {
-    boosted: boolean;
     useUrlParams: boolean;
     formData: FormData;
     /**
@@ -85,8 +85,6 @@ export type HtmxResponseInfo = {
     target: Element;
     requestConfig: HtmxRequestConfig;
     etc: HtmxAjaxEtc;
-    boosted: boolean;
-    select: string;
     pathInfo: {
         requestPath: string;
         finalRequestPath: string;
@@ -96,13 +94,15 @@ export type HtmxResponseInfo = {
     failed?: boolean;
     successful?: boolean;
     keepIndicators?: boolean;
+    defaultHandler: (elt: Element, responseInfo: HtmxResponseInfo) => void;
 };
 export type HtmxAjaxEtc = {
     returnPromise?: boolean;
     handler?: HtmxAjaxHandler;
-    select?: string;
     targetOverride?: Element;
     swapOverride?: HtmxSwapStyle;
+    errorTargetOverride?: Element;
+    errorSwapOverride?: HtmxSwapStyle;
     headers?: Record<string, string>;
     values?: any | FormData;
     credentials?: boolean;
@@ -123,7 +123,6 @@ export type HtmxBeforeSwapDetails = HtmxResponseInfo & {
     serverResponse: any;
     isError: boolean;
     ignoreTitle: boolean;
-    selectOverride: string;
     swapOverride: string;
 };
 export type HtmxAjaxHandler = (elt: Element, responseInfo: HtmxResponseInfo) => any;
@@ -181,7 +180,6 @@ declare namespace htmx {
         let allowScriptTags: boolean;
         let inlineScriptNonce: string;
         let inlineStyleNonce: string;
-        let attributesToSettle: string[];
         let withCredentials: boolean;
         let timeout: number;
         let wsReconnectDelay: "full-jitter" | ((retryCount: number) => number);
@@ -194,13 +192,21 @@ declare namespace htmx {
         let methodsThatUseUrlParams: (HttpVerb)[];
         let selfRequestsOnly: boolean;
         let ignoreTitle: boolean;
-        let scrollIntoViewOnBoost: boolean;
         let triggerSpecsCache: any | null;
         let disableInheritance: boolean;
-        let responseHandling: HtmxResponseHandlingConfig[];
         let allowNestedOobSwaps: boolean;
+        let defaultErrorSwapStyle: HtmxSwapStyle;
+        let defaultErrorTarget: string;
+        let httpErrorCodesToSwap: number[];
+        let layoutQueuesEnabled: boolean;
+        let cleanUpThrottlingEnabled: boolean;
+        let disabledEvents: any;
     }
     let parseInterval: (str: string) => number | undefined;
     let _: (str: string) => any;
+    let readLayout: (callback: () => void) => void;
+    let writeLayout: (callback: () => void) => void;
+    let querySelectorAllExt: (elt: Node | Element | Document | string, selector: string, global?: boolean | undefined) => (Node | Window)[];
+    let querySelectorExt: (eltOrSelector: Node | string, selector?: string | undefined) => Node | Window;
     let version: string;
 }

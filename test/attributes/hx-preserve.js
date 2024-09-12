@@ -46,17 +46,6 @@ describe('hx-preserve attribute', function() {
     byId('d4').innerHTML.should.equal('New oob Content')
   })
 
-  it('preserved element should not be swapped if it is part of a hx-select-oob swap', function() {
-    this.server.respondWith('GET', '/test', "Normal Content<div id='d2'><div id='d3' hx-preserve>New oob Content</div><div id='d4'>New oob Content</div></div>")
-    var div1 = make("<div id='d1' hx-get='/test' hx-select-oob='#d2'>Click Me!</div>")
-    var div2 = make("<div id='d2'><div id='d3' hx-preserve>Old Content</div></div>")
-    div1.click()
-    this.server.respond()
-    byId('d1').innerHTML.should.equal('Normal Content')
-    byId('d3').innerHTML.should.equal('Old Content')
-    byId('d4').innerHTML.should.equal('New oob Content')
-  })
-
   it('preserved element should relocated unchanged if it is part of a oob swap targeting a different loction', function() {
     this.server.respondWith('GET', '/test', "Normal Content<div id='d2' hx-swap-oob='innerHTML:#d5'><div id='d3' hx-preserve>New oob Content</div><div id='d4'>New oob Content</div></div>")
     var div1 = make("<div id='d1' hx-get='/test'>Click Me!</div>")

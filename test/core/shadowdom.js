@@ -374,59 +374,6 @@ describe('Core htmx Shadow DOM Tests', function() {
     div.innerHTML.should.equal('click 2')
   })
 
-  it('properly handles hx-select for basic situation', function() {
-    var i = 1
-    this.server.respondWith('GET', '/test', "<div id='d1'>foo</div><div id='d2'>bar</div>")
-    var div = make('<div hx-get="/test" hx-select="#d1"></div>')
-    div.click()
-    this.server.respond()
-    div.innerHTML.should.equal('<div id="d1">foo</div>')
-  })
-
-  it('properly handles hx-select for full html document situation', function() {
-    this.server.respondWith('GET', '/test', "<html><body><div id='d1'>foo</div><div id='d2'>bar</div></body></html>")
-    var div = make('<div hx-get="/test" hx-select="#d1"></div>')
-    div.click()
-    this.server.respond()
-    div.innerHTML.should.equal('<div id="d1">foo</div>')
-  })
-
-  it('properly settles attributes on interior elements', function(done) {
-    this.server.respondWith('GET', '/test', "<div hx-get='/test'><div width='bar' id='d1'></div></div>")
-    var div = make("<div hx-get='/test' hx-swap='outerHTML settle:10ms'><div id='d1'></div></div>")
-    div.click()
-    this.server.respond()
-    should.equal(byId('d1').getAttribute('width'), null)
-    setTimeout(function() {
-      should.equal(byId('d1').getAttribute('width'), 'bar')
-      done()
-    }, 20)
-  })
-
-  it('properly settles attributes elements with single quotes in id', function(done) {
-    this.server.respondWith('GET', '/test', "<div hx-get='/test'><div width='bar' id=\"d1'\"></div></div>")
-    var div = make("<div hx-get='/test' hx-swap='outerHTML settle:10ms'><div id=\"d1'\"></div></div>")
-    div.click()
-    this.server.respond()
-    should.equal(byId("d1'").getAttribute('width'), null)
-    setTimeout(function() {
-      should.equal(byId("d1'").getAttribute('width'), 'bar')
-      done()
-    }, 20)
-  })
-
-  it('properly settles attributes elements with double quotes in id', function(done) {
-    this.server.respondWith('GET', '/test', "<div hx-get='/test'><div width='bar' id='d1\"'></div></div>")
-    var div = make("<div hx-get='/test' hx-swap='outerHTML settle:10ms'><div id='d1\"'></div></div>")
-    div.click()
-    this.server.respond()
-    should.equal(byId('d1"').getAttribute('width'), null)
-    setTimeout(function() {
-      should.equal(byId('d1"').getAttribute('width'), 'bar')
-      done()
-    }, 20)
-  })
-
   it('properly handles multiple select input', function() {
     var values
     this.server.respondWith('Post', '/test', function(xhr) {
@@ -1309,21 +1256,6 @@ describe('Core htmx Shadow DOM Tests', function() {
     button.click()
     this.server.respond()
     values.should.deep.equal({ name: '', outside: '' })
-  })
-
-  it('can handle basic events w/ no other attributes', function() {
-    var btn = make("<button hx-on:click='window.foo = true'>Foo</button>")
-    btn.click()
-    window.foo.should.equal(true)
-    delete window.foo
-  })
-
-  it('can handle basic events w/ no other attributes in child', function() {
-    var div = make("<div><button id='b1' hx-on:click='window.foo = true'>Foo</button></div>")
-    var btn = div.querySelector('#b1')
-    btn.click()
-    window.foo.should.equal(true)
-    delete window.foo
   })
 
   it('can target shadow DOM Host and place content below web component', function() {

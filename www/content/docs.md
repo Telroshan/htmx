@@ -432,9 +432,9 @@ with any of the following values:
 | `innerHTML` | the default, puts the content inside the target element
 | `outerHTML` | replaces the entire target element with the returned content
 | `afterbegin` | prepends the content before the first child inside the target
-| `beforebegin` | prepends the content before the target in the target's parent element
+| `beforebegin` | prepends the content before the target in the targets parent element
 | `beforeend` | appends the content after the last child inside the target
-| `afterend` | appends the content after the target in the target's parent element
+| `afterend` | appends the content after the target in the targets parent element
 | `delete` | deletes the target element regardless of the response
 | `none` | does not append content from response ([Out of Band Swaps](#oob_swaps) and [Response Headers](#response-headers) will still be processed)
 
@@ -490,7 +490,7 @@ The modifiers available on `hx-swap` are:
 | `settle`      | The settle delay to use (e.g. `100ms`) between when new content is inserted and when it is settled       |
 | `ignoreTitle` | If set to `true`, any title found in the new content will be ignored and not update the document title   |
 | `scroll`      | `top` or `bottom`, will scroll the target element to its top or bottom                                   |
-| `show`        | `top` or `bottom`, will scroll the target element's top or bottom into view                               |
+| `show`        | `top` or `bottom`, will scroll the target elements top or bottom into view                               |
 
 All swap modifiers appear after the swap style is specified, and are colon-separated.
 
@@ -499,7 +499,7 @@ See the [hx-swap](@/attributes/hx-swap.md) documentation for more details on the
 ### Synchronization {#synchronization}
 
 Often you want to coordinate the requests between two elements.  For example, you may want a request from one element
-to supersede the request of another element, or to wait until the other element's request has finished.
+to supersede the request of another element, or to wait until the other elements request has finished.
 
 htmx offers a [`hx-sync`](@/attributes/hx-sync.md) attribute to help you accomplish this.
 
@@ -790,7 +790,7 @@ The anchor tag in this div will issue an AJAX `GET` request to `/blog` and swap 
 A feature of `hx-boost` is that it degrades gracefully if javascript is not enabled: the links and forms continue
 to work, they simply don't use ajax requests.  This is known as
 [Progressive Enhancement](https://developer.mozilla.org/en-US/docs/Glossary/Progressive_Enhancement), and it allows
-a wider audience to use your site's functionality.
+a wider audience to use your sites functionality.
 
 Other htmx patterns can be adapted to achieve progressive enhancement as well, but they will require more thought.
 
@@ -1080,7 +1080,7 @@ WebSocket sends.
 
 Htmx fires events around validation that can be used to hook in custom validation and error handling:
 
-* `htmx:validation:validate` - called before an element's `checkValidity()` method is called.  May be used to add in
+* `htmx:validation:validate` - called before an elements `checkValidity()` method is called.  May be used to add in
    custom validation logic
 * `htmx:validation:failed` - called when `checkValidity()` returns false, indicating an invalid input
 * `htmx:validation:halted` - called when a request is not issued due to validation errors.  Specific errors may be found
@@ -1750,11 +1750,13 @@ listed below:
 | `htmx.config.selfRequestsOnly`        | defaults to `true`, whether to only allow AJAX requests to the same domain as the current document                                                                                                                                                                                                                                     |
 | `htmx.config.ignoreTitle`             | defaults to `false`, if set to `true` htmx will not update the title of the document when a `title` tag is found in new content                                                                                                                                                                                                                   |
 | `htmx.config.disableInheritance`      | disables attribute inheritance in htmx, which can then be overridden by the [`hx-inherit`](@/attributes/hx-inherit.md) attribute                                                                                                                                                                                                                  |
-| `htmx.config.scrollIntoViewOnBoost`   | defaults to `true`, whether or not the target of a boosted element is scrolled into the viewport. If `hx-target` is omitted on a boosted element, the target defaults to `body`, causing the page to scroll to the top.                                                                                                                           |
+| `htmx.config.scrollIntoViewOnBoost`   | defaults to `true`, whether or not the target of a boosted element is scrolled into the viewport. If `hx-target` is omitted on a boosted element, the target defaults to `body`, causing the page to scroll to the top. |
 | `htmx.config.triggerSpecsCache`       | defaults to `null`, the cache to store evaluated trigger specifications into, improving parsing performance at the cost of more memory usage. You may define a simple object to use a never-clearing cache, or implement your own system using a [proxy object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Proxy) |
 | `htmx.config.responseHandling`        | the default [Response Handling](@/docs.md#response-handling) behavior for response status codes can be configured here to either swap or error                                                                                                                                                                                                    |
 | `htmx.config.allowNestedOobSwaps`     | defaults to `true`, whether to process OOB swaps on elements that are nested within the main response element. See [Nested OOB Swaps](@/attributes/hx-swap-oob.md#nested-oob-swaps).                                                                                                                                                              |
-
+| `htmx.config.defaultErrorSwapStyle`   | defaults to `none`, htmx will swap content on error responses by default using the specified [swap method](@/attributes/hx-error-swap.md)                                  |
+| `htmx.config.defaultErrorTarget`      | defaults to `mirror`, htmx will swap content on error responses by default using the specified [swap target](@/attributes/hx-error-target.md)                              |
+| `htmx.config.httpErrorCodesToSwap`    | defaults to `[]`, if this array of [HTTP status codes](https://developer.mozilla.org/docs/Web/HTTP/Status) is not empty, htmx will use it as a whitelist and won't swap error responses with an unlisted status code           |
 </div>
 
 You can set them directly in javascript, or you can use a `meta` tag:

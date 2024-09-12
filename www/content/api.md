@@ -142,6 +142,9 @@ Note that using a [meta tag](@/docs.md#config) is the preferred mechanism for se
 * `triggerSpecsCache:null` - object: the cache to store evaluated trigger specifications into, improving parsing performance at the cost of more memory usage. You may define a simple object to use a never-clearing cache, or implement your own system using a [proxy object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Proxy)
 * `htmx.config.responseHandling:[...]` - HtmxResponseHandlingConfig[]: the default [Response Handling](@/docs.md#response-handling) behavior for response status codes can be configured here to either swap or error
 * `htmx.config.allowNestedOobSwaps:true` -  boolean: whether to process OOB swaps on elements that are nested within the main response element. See [Nested OOB Swaps](@/attributes/hx-swap-oob.md#nested-oob-swaps).      
+* `defaultErrorSwapStyle:'none'` - string: the default swap style to use if [`hx-error-swap`](@/attributes/hx-error-swap.md) is omitted
+* `defaultErrorTarget:'mirror'` - string: the default target strategy to use if [`hx-error-target`](@/attributes/hx-error-target.md) is omitted
+* `httpErrorCodesToSwap:[]` - array of numbers: the [HTTP error codes](https://developer.mozilla.org/docs/Web/HTTP/Status) to enable errors swapping for (all other error codes will be ignored). If empty, all error codes will be swapped
 
 ##### Example
 
