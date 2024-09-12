@@ -26,6 +26,19 @@ describe('hx-swap-oob attribute', function() {
   }
 
   for (const config of [{ allowNestedOobSwaps: true }, { allowNestedOobSwaps: false }]) {
+    it('handles basic error response properly with config ' + JSON.stringify(config), function() {
+      Object.assign(htmx.config, config)
+      this.server.respondWith('GET', '/test', "Clicked<div id='d1' hx-swap-oob='true'>Swapped0</div>")
+      var div = make('<div hx-get="/test" hx-error-swap="mirror">click me</div>')
+      make('<div id="d1"></div>')
+      div.click()
+      this.server.respond()
+      div.innerHTML.should.equal('Clicked')
+      byId('d1').innerHTML.should.equal('Swapped0')
+    })
+  }
+
+  for (const config of [{ allowNestedOobSwaps: true }, { allowNestedOobSwaps: false }]) {
     it('oob swap works when the response has a body tag with config ' + JSON.stringify(config), function() {
       Object.assign(htmx.config, config)
       this.server.respondWith('GET', '/test', "<body>Clicked<div id='d2' hx-swap-oob='true'>Swapped0</div></body>")

@@ -1,7 +1,6 @@
 export default htmx;
 export type HttpVerb = 'get' | 'head' | 'post' | 'put' | 'delete' | 'connect' | 'options' | 'trace' | 'patch';
 export type SwapOptions = {
-    select?: string;
     selectOOB?: string;
     eventInfo?: any;
     anchor?: string;
@@ -10,9 +9,10 @@ export type SwapOptions = {
     afterSettleCallback?: swapCallback;
 };
 export type swapCallback = () => any;
-export type HtmxSwapStyle = 'innerHTML' | 'outerHTML' | 'beforebegin' | 'afterbegin' | 'beforeend' | 'afterend' | 'delete' | 'none' | string;
+export type HtmxSwapStyle = 'innerHTML' | 'outerHTML' | 'beforebegin' | 'afterbegin' | 'beforeend' | 'afterend' | 'delete' | 'none' | 'mirror' | string;
 export type HtmxSwapSpecification = {
     swapStyle: HtmxSwapStyle;
+    defaultSwapStyle?: HtmxSwapStyle;
     swapDelay: number;
     settleDelay: number;
     transition?: boolean;
@@ -54,12 +54,12 @@ export type HtmxAjaxHelperContext = {
     handler?: HtmxAjaxHandler;
     target?: Element | string;
     swap?: HtmxSwapStyle;
+    errorTarget?: Element | string;
+    errorSwap?: HtmxSwapStyle;
     values?: any | FormData;
     headers?: Record<string, string>;
-    select?: string;
 };
 export type HtmxRequestConfig = {
-    boosted: boolean;
     useUrlParams: boolean;
     formData: FormData;
     /**
@@ -85,8 +85,6 @@ export type HtmxResponseInfo = {
     target: Element;
     requestConfig: HtmxRequestConfig;
     etc: HtmxAjaxEtc;
-    boosted: boolean;
-    select: string;
     pathInfo: {
         requestPath: string;
         finalRequestPath: string;
@@ -96,34 +94,25 @@ export type HtmxResponseInfo = {
     failed?: boolean;
     successful?: boolean;
     keepIndicators?: boolean;
+    defaultHandler: (elt: Element, responseInfo: HtmxResponseInfo) => void;
 };
 export type HtmxAjaxEtc = {
     returnPromise?: boolean;
     handler?: HtmxAjaxHandler;
-    select?: string;
     targetOverride?: Element;
     swapOverride?: HtmxSwapStyle;
+    errorTargetOverride?: Element;
+    errorSwapOverride?: HtmxSwapStyle;
     headers?: Record<string, string>;
     values?: any | FormData;
     credentials?: boolean;
     timeout?: number;
-};
-export type HtmxResponseHandlingConfig = {
-    code?: string;
-    swap: boolean;
-    error?: boolean;
-    ignoreTitle?: boolean;
-    select?: string;
-    target?: string;
-    swapOverride?: string;
-    event?: string;
 };
 export type HtmxBeforeSwapDetails = HtmxResponseInfo & {
     shouldSwap: boolean;
     serverResponse: any;
     isError: boolean;
     ignoreTitle: boolean;
-    selectOverride: string;
 };
 export type HtmxAjaxHandler = (elt: Element, responseInfo: HtmxResponseInfo) => any;
 export type HtmxSettleTask = (() => void);
@@ -180,7 +169,6 @@ declare namespace htmx {
         const allowScriptTags: boolean;
         const inlineScriptNonce: string;
         const inlineStyleNonce: string;
-        const attributesToSettle: string[];
         const withCredentials: boolean;
         const timeout: number;
         const wsReconnectDelay: "full-jitter" | ((retryCount: number) => number);
@@ -193,13 +181,21 @@ declare namespace htmx {
         const methodsThatUseUrlParams: (HttpVerb)[];
         const selfRequestsOnly: boolean;
         const ignoreTitle: boolean;
-        const scrollIntoViewOnBoost: boolean;
         const triggerSpecsCache: any | null;
         const disableInheritance: boolean;
-        const responseHandling: HtmxResponseHandlingConfig[];
         const allowNestedOobSwaps: boolean;
+        const defaultErrorSwapStyle: HtmxSwapStyle;
+        const defaultErrorTarget: string;
+        const httpErrorCodesToSwap: number[];
+        const layoutQueuesEnabled: boolean;
+        const cleanUpThrottlingEnabled: boolean;
+        const disabledEvents: any;
     }
     const parseInterval: (str: string) => number;
     const _: (str: string) => any;
+    const readLayout: (callback: () => void) => void;
+    const writeLayout: (callback: () => void) => void;
+    const querySelectorAllExt: (elt: string | Element | Node | Document, selector: string, global?: boolean) => (Node | Window)[];
+    const querySelectorExt: (eltOrSelector: string | Node, selector?: string) => Node | Window;
     const version: string;
 }
