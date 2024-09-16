@@ -3309,7 +3309,7 @@ var htmx = (function() {
    * @returns {boolean}
    */
   function isBooleanCheckbox(elt) {
-    return elt instanceof HTMLInputElement && elt.getAttribute('type') === 'checkbox' && typeof elt.getAttribute('value') !== 'string'
+    return elt instanceof HTMLInputElement && elt.getAttribute('type') === 'checkbox' && typeof elt.getAttribute('name') === 'string' && typeof elt.getAttribute('value') !== 'string'
   }
 
   /**
